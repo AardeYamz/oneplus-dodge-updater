@@ -19,3 +19,7 @@ fox-extract/
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# --- Toolbox app build output ---
+toolbox/node_modules/
+toolbox/dist/
