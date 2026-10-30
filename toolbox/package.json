@@ -1,0 +1,21 @@
+{
+  "name": "dodge-toolbox",
+  "version": "0.1.0",
+  "description": "Windows toolbox for updating LineageOS on the OnePlus 13 (dodge)",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win portable"
+  },
+  "build": {
+    "appId": "local.dodge.toolbox",
+    "productName": "Dodge Toolbox",
+    "files": ["main.js", "preload.js", "index.html", "renderer.js", "style.css", "theme/*"],
+    "win": { "target": "portable" }
+  },
+  "devDependencies": {
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8"
+  }
+}
