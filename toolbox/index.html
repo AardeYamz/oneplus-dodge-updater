@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'">
+  <title>Dodge Toolbox</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Dodge Toolbox <small>OnePlus 13 · LineageOS + MindTheGapps + OrangeFox + KernelSU-Next</small></h1>
+    <div class="status">
+      <span id="state" class="pill">unknown</span>
+      <span id="info"></span>
+      <button id="refresh">Refresh</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="left">
+      <ol id="steps"></ol>
+
+      <details class="box">
+        <summary>Quick actions</summary>
+        <div class="row">
+          <button data-reboot="system">Reboot system</button>
+          <button data-reboot="bootloader">Reboot bootloader</button>
+          <button data-reboot="recovery">Reboot recovery</button>
+        </div>
+        <form id="custom" class="row">
+          <input id="line" placeholder="adb devices -l   /   fastboot getvar current-slot" autocomplete="off">
+          <button type="submit">Run</button>
+        </form>
+        <div class="row">
+          <button id="runScript">Run update-lineage.ps1 in PowerShell</button>
+          <button id="openRoot">Open folder</button>
+        </div>
+      </details>
+
+      <details class="box">
+        <summary>Settings</summary>
+        <div id="settings"></div>
+      </details>
+    </section>
+
+    <section class="right">
+      <div id="progress" hidden><div class="bar"><div id="fill"></div></div><span id="ptext"></span></div>
+      <pre id="log"></pre>
+      <div class="row">
+        <button id="cancel" class="danger" disabled>Cancel</button>
+        <button id="clear">Clear log</button>
+      </div>
+    </section>
+  </main>
+  <script src="renderer.js"></script>
+</body>
+</html>
