@@ -1,0 +1,214 @@
+/* yl-theme.css: the v3.yannislam.org theme for the project pages (trips, 37-bestick-rd, time-location-visual).
+   Source: the yl-theme repo (src/yl-theme.css). Edit it there and run scripts/build.py and scripts/sync.py; the
+   copies in the project repos are overwritten.
+
+   Tokens: copied unchanged from v3.yannislam.org src/theme.scss (scripts/check_tokens.py checks them). Three modes, set by [data-theme] on <html>
+   (yl-theme.js): none = default (navy), "light" (cream), "dark" (near-black). Default and dark are both dark
+   themes, so a page's own dark-only colors go under :root:not([data-theme="light"]).
+   Components: the page header (logo, title, version pill, theme toggle), the section title and buttons,
+   following v3's banner, .section-title and .theme-toggle. */
+
+:root {
+  --color-navy: #131f31;
+  --color-light-navy: #112240;
+  --color-lightest-navy: #303c55;
+  --color-slate: #8892b0;
+  --color-light-slate: #a8b2d1;
+  --color-lightest-slate: #ccd6f6;
+  --color-white: #e6f1ff;
+  --color-orange: #ffa500;
+  --color-orange-opacity: rgba(255, 165, 0, 0.07);
+  --name-gradient: linear-gradient(90deg, #fff200, #ffc90e, #ff7f27);
+  --color-card-overlay: rgba(10, 25, 47, 0.89);
+
+  --md-sys-color-primary: var(--color-orange);
+  --md-sys-color-on-primary: var(--color-navy);
+  --md-sys-color-primary-container: color-mix(in srgb, var(--color-orange) 30%, var(--color-navy) 70%);
+  --md-sys-color-on-primary-container: var(--color-lightest-slate);
+  --md-sys-color-secondary: var(--color-light-slate);
+  --md-sys-color-on-secondary: var(--color-navy);
+  --md-sys-color-secondary-container: var(--color-lightest-navy);
+  --md-sys-color-on-secondary-container: var(--color-lightest-slate);
+  --md-sys-color-background: var(--color-navy);
+  --md-sys-color-on-background: var(--color-lightest-slate);
+  --md-sys-color-surface: var(--color-navy);
+  --md-sys-color-on-surface: var(--color-lightest-slate);
+  --md-sys-color-on-surface-variant: var(--color-slate);
+  --md-sys-color-surface-container-lowest: var(--color-navy);
+  --md-sys-color-surface-container-low: color-mix(in srgb, var(--color-light-navy) 60%, var(--color-navy) 40%);
+  --md-sys-color-surface-container: var(--color-light-navy);
+  --md-sys-color-surface-container-high: var(--color-lightest-navy);
+  --md-sys-color-surface-container-highest: color-mix(in srgb, var(--color-lightest-navy) 88%, var(--color-lightest-slate) 12%);
+  --md-sys-color-outline: var(--color-lightest-navy);
+  --md-sys-color-outline-variant: color-mix(in srgb, var(--color-lightest-navy) 55%, transparent);
+  --md-sys-color-inverse-surface: var(--color-lightest-slate);
+  --md-sys-color-inverse-on-surface: var(--color-navy);
+  --md-sys-color-scrim: #000000;
+}
+
+:root[data-theme="light"] {
+  --color-navy: #f4f1ea;
+  --color-light-navy: #ffffff;
+  --color-lightest-navy: #e4ded2;
+  --color-slate: #6b6255;
+  --color-light-slate: #4a4238;
+  --color-lightest-slate: #1f1a12;
+  --color-white: #131108;
+  --color-orange: #d9720c;
+  --color-orange-opacity: rgba(217, 114, 12, 0.08);
+  --color-card-overlay: rgba(244, 241, 234, 0.92);
+  --name-gradient: linear-gradient(90deg, #5c5c5c, #9c1f0f, #5c1010);
+  --md-sys-color-on-primary: var(--color-white);
+  --md-sys-color-on-secondary: var(--color-white);
+}
+
+:root[data-theme="dark"] {
+  --color-navy: #05070c;
+  --color-light-navy: #0a0e18;
+  --color-lightest-navy: #1c2740;
+  --color-slate: #6b7590;
+  --color-light-slate: #93a0bd;
+  --color-lightest-slate: #d7e0f5;
+  --color-white: #f7f9fc;
+  --color-orange: #ffb020;
+  --color-orange-opacity: rgba(255, 176, 32, 0.09);
+  --color-card-overlay: rgba(5, 7, 12, 0.92);
+  --name-gradient: linear-gradient(90deg, #ff7f27, #ff3d1a, #ed1c24);
+}
+
+:root {
+  --md-sys-shape-corner-none: 0px;
+  --md-sys-shape-corner-extra-small: 4px;
+  --md-sys-shape-corner-small: 8px;
+  --md-sys-shape-corner-medium: 12px;
+  --md-sys-shape-corner-large: 16px;
+  --md-sys-shape-corner-extra-large: 28px;
+  --md-sys-shape-corner-full: 999px;
+  --md-sys-elevation-level0: none;
+  --md-sys-elevation-level1: 0px 1px 2px rgba(0, 0, 0, 0.30), 0px 1px 3px 1px rgba(0, 0, 0, 0.15);
+  --md-sys-elevation-level2: 0px 1px 2px rgba(0, 0, 0, 0.30), 0px 2px 6px 2px rgba(0, 0, 0, 0.15);
+  --md-sys-elevation-level3: 0px 1px 3px rgba(0, 0, 0, 0.30), 0px 4px 8px 3px rgba(0, 0, 0, 0.15);
+  --md-sys-elevation-level4: 0px 2px 3px rgba(0, 0, 0, 0.30), 0px 6px 10px 4px rgba(0, 0, 0, 0.15);
+  --md-sys-elevation-level5: 0px 4px 4px rgba(0, 0, 0, 0.30), 0px 8px 12px 6px rgba(0, 0, 0, 0.15);
+  --md-sys-state-hover-opacity: 0.08;
+  --md-sys-state-focus-opacity: 0.10;
+  --md-sys-state-pressed-opacity: 0.10;
+  --md-sys-state-dragged-opacity: 0.16;
+  --md-sys-motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* v3 variables.scss $MainFont / $CodeFont */
+  --yl-font: Calibre, "San Francisco", "SF Pro Text", -apple-system, system-ui, BlinkMacSystemFont, Roboto, "Helvetica Neue", "Segoe UI", Arial, sans-serif;
+  --yl-mono: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", "Lucida Console", Monaco, monospace;
+  color-scheme: dark;
+}
+:root[data-theme="light"] { color-scheme: light; }
+
+body {
+  background-color: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface-variant);
+  font-family: var(--yl-font);
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+}
+/* form controls don't inherit the page font by default (buttons would render in the browser's Arial) */
+button, input, select, textarea { font-family: inherit; }
+::selection { background: color-mix(in srgb, var(--md-sys-color-primary) 30%, transparent); }
+a { color: var(--md-sys-color-primary); }
+
+/* Sizes are in rem. The root size grows with the window (16px on phones, about 17px at 1280px, 19.5px at 1920px,
+   22px at 2560px) and is a percentage of the browser's own text size, so it still follows that setting and zoom. */
+html { font-size: clamp(100%, 75% + 0.39vw, 160%); }
+/* the page's side margin (the logo's distance from the window edge), the same on every page */
+:root { --yl-gutter: clamp(16px, 2.5vw, 56px); }
+
+/* ---------- page header ----------
+   Logo beside the title, version pill on the title line, the page's own controls and the theme toggle on the right
+   (v3's .theme-toggle). A description, if any, goes right after the header, outside it.
+     <header class="yl-head sticky">
+       <a class="yl-brand" href="https://yannislam.org" aria-label="Yannis Lam, home" data-yl-logo></a>
+       <h1 class="yl-title">… <span class="yl-ver">v…</span></h1>
+       <div class="yl-actions">…</div>
+       <button type="button" class="yl-theme-toggle" data-yl-theme-toggle></button>
+     </header>
+     <p class="yl-sub">…</p>
+   .sticky keeps the header at the top while the page scrolls (the description scrolls away under it); yl-theme.js
+   sets --yl-head-h on <html> to its height, for bars that stick under it, and .yl-stuck once the page has scrolled.
+   .yl-head.compact is the single-row form for an app bar; the title is the same size in both. Pages put the header
+   --yl-gutter from the window's edge and 1rem from the top, so the logo sits in the same place on every page. */
+.yl-head { --yl-title-size: clamp(2rem, 1.2rem + 1.8vw, 3rem); display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1rem; }
+.yl-head.sticky { position: sticky; top: 0; z-index: 1200; padding-block: 1rem; background: var(--md-sys-color-background); box-shadow: 0 0 0 100vmax var(--md-sys-color-background); clip-path: inset(0 -100vmax -1px); }
+.yl-head.sticky.yl-stuck { box-shadow: 0 0 0 100vmax var(--md-sys-color-background), 0 1px 0 100vmax var(--md-sys-color-outline); }
+/* The logo is as tall as the title's line (1.1em). yl-fonts.css centers Calibre's capitals in the line box, so the
+   logo's middle is level with the middle of the capitals. */
+.yl-brand { flex: none; align-self: flex-start; display: inline-flex; height: calc(var(--yl-title-size) * 1.1); aspect-ratio: 328 / 664; border-radius: var(--md-sys-shape-corner-small); }
+.yl-brand svg { width: 100%; height: 100%; display: block; }
+/* the logo spins a full turn on hover or keyboard focus (not with reduced motion) */
+@keyframes yl-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: no-preference) {
+  .yl-brand:hover svg, .yl-brand:focus-visible svg { animation: yl-spin .8s cubic-bezier(0.645, 0.045, 0.355, 1); }
+}
+.yl-brand:focus-visible { outline: 2px solid var(--md-sys-color-primary); outline-offset: 2px; }
+/* v3 header.component: clear-color logo in default mode, black in light, white in dark */
+:root[data-theme="light"] .yl-brand polygon { fill: #000000; }
+:root[data-theme="dark"] .yl-brand polygon { fill: #ffffff; }
+/* v3 banner name and section titles: Calibre 600 in on-surface */
+.yl-title { flex: 1 1 0; min-width: 0; margin: 0; font-family: var(--yl-font); font-weight: 600; font-size: var(--yl-title-size); line-height: 1.1; letter-spacing: -0.01em; color: var(--md-sys-color-on-surface); text-wrap: pretty;
+  /* the version pill sits beside the title, vertically centered on it; if there is no room it wraps under it, flush */
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem 0.6rem; }
+.yl-ver { flex: none; padding: 0.25rem 0.75rem; font: 400 0.875rem/1.3 var(--yl-mono); letter-spacing: 0; color: var(--md-sys-color-on-surface-variant); border: 1px solid color-mix(in srgb, var(--md-sys-color-on-surface-variant) 55%, transparent); border-radius: var(--md-sys-shape-corner-full); white-space: nowrap; }
+.yl-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.625rem 0.875rem; }
+.yl-sub { max-width: 70ch; margin: 0; font-size: 1.125rem; line-height: 1.5; color: var(--md-sys-color-on-surface-variant); }
+@media (max-width: 760px) {
+  .yl-head > .yl-actions { order: 11; flex: 1 0 100%; }
+}
+/* an app bar spans the window, so it carries the gutter itself; the same top padding as the sticky header */
+.yl-head.compact { flex-wrap: wrap; gap: 0.5rem 0.875rem; padding: 1rem var(--yl-gutter); }
+.yl-head.compact .yl-title { flex: 0 1 auto; margin-right: auto; }
+.yl-head.compact .yl-ver { padding: 0.125rem 0.625rem; font-size: 0.8125rem; }
+
+/* ---------- section title (v3 styles.scss .section-title) ---------- */
+.yl-section-title { display: flex; align-items: center; margin: 0 0 1.125rem; font-family: var(--yl-font); font-weight: 600; font-size: 2rem; line-height: 1.15; letter-spacing: 0; text-transform: none; color: var(--md-sys-color-on-surface); border: 0; padding: 0; }
+.yl-section-title::after { content: ""; display: block; flex: 1 1 0; max-width: 300px; height: 1px; margin-left: 1.25rem; background-color: var(--md-sys-color-outline); }
+@media (max-width: 768px) { .yl-section-title { font-size: 1.5rem; } }
+/* card-level heading */
+.yl-card-title { margin: 0; font-family: var(--yl-font); font-weight: 600; font-size: 1.25rem; line-height: 1.25; color: var(--md-sys-color-on-surface); }
+
+/* ---------- theme toggle (v3 header .theme-toggle: M3 icon button) ---------- */
+/* .yl-menu-toggle is the same icon button (v3 .menu-toggle); a page shows it where it collapses its nav into a menu */
+.yl-theme-toggle, .yl-menu-toggle { position: relative; isolation: isolate; flex: none; display: inline-flex; align-items: center; justify-content: center; width: 2.875rem; height: 2.875rem; min-height: 0; min-width: 0; padding: 0; border: none; border-radius: 0; background: none; color: var(--md-sys-color-on-surface); cursor: pointer; font-size: 1.25rem; transition: color .2s ease; }
+.yl-theme-toggle::before, .yl-menu-toggle::before { content: ""; position: absolute; z-index: -1; inset: 0; border-radius: var(--md-sys-shape-corner-full); background-color: var(--md-sys-color-primary); opacity: 0; pointer-events: none; transition: opacity .15s var(--md-sys-motion-easing-standard); }
+.yl-theme-toggle:hover, .yl-theme-toggle:focus-visible, .yl-menu-toggle:hover, .yl-menu-toggle:focus-visible { color: var(--md-sys-color-primary); border: none; background: none; }
+.yl-theme-toggle:hover::before, .yl-menu-toggle:hover::before { opacity: var(--md-sys-state-hover-opacity); }
+.yl-theme-toggle:focus-visible::before, .yl-menu-toggle:focus-visible::before { opacity: var(--md-sys-state-focus-opacity); }
+.yl-theme-toggle:active::before, .yl-menu-toggle:active::before { opacity: var(--md-sys-state-pressed-opacity); }
+.yl-theme-toggle:focus-visible, .yl-menu-toggle:focus-visible { outline: 2px solid var(--md-sys-color-primary); outline-offset: 2px; }
+.yl-theme-toggle svg, .yl-menu-toggle svg { width: 1em; height: 1em; fill: currentColor; display: none; }
+.yl-menu-toggle .yl-ic-open, .yl-menu-toggle[aria-expanded="true"] .yl-ic-close { display: block; }
+.yl-menu-toggle[aria-expanded="true"] .yl-ic-open { display: none; }
+:root:not([data-theme]) .yl-theme-toggle .yl-ic-default,
+:root[data-theme="light"] .yl-theme-toggle .yl-ic-light,
+:root[data-theme="dark"] .yl-theme-toggle .yl-ic-dark { display: block; }
+.yl-head.compact .yl-theme-toggle, .yl-head.compact .yl-menu-toggle { width: 2.5rem; height: 2.5rem; font-size: 1.125rem; }
+
+/* ---------- buttons (v3 .main-btn: outlined pill in the primary color, mono label) ---------- */
+.yl-btn { position: relative; isolation: isolate; display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.5rem 1rem; color: var(--md-sys-color-primary); background: transparent; border: 1px solid var(--md-sys-color-primary); border-radius: var(--md-sys-shape-corner-full); font: 400 0.875rem/1 var(--yl-mono); text-decoration: none; white-space: nowrap; cursor: pointer; transition: color .25s cubic-bezier(0.645, 0.045, 0.355, 1), background-color .25s cubic-bezier(0.645, 0.045, 0.355, 1); }
+.yl-btn::before { content: ""; position: absolute; z-index: -1; inset: 0; border-radius: var(--md-sys-shape-corner-full); background-color: var(--md-sys-color-primary); opacity: 0; pointer-events: none; transition: opacity .15s var(--md-sys-motion-easing-standard); }
+.yl-btn:hover::before { opacity: var(--md-sys-state-hover-opacity); }
+.yl-btn:focus-visible { outline: 2px solid var(--md-sys-color-primary); outline-offset: 2px; }
+.yl-btn.filled { background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); }
+.yl-btn.filled::before { background-color: var(--md-sys-color-on-primary); }
+
+@media (max-width: 640px) {
+  .yl-head { gap: 0.625rem 0.75rem; }
+  .yl-sub { font-size: 1.0625rem; }
+  /* phones: a smaller title and a date-only pill (yl-theme.js wraps the time in .yl-ver-time) stay on one line;
+     a long title wraps its own words rather than pushing the pill under it */
+  .yl-head { --yl-title-size: clamp(1.25rem, 5.6vw, 2rem); gap: 0.5rem 0.625rem; }
+  .yl-title { flex-wrap: nowrap; gap: 0.5rem; }
+  .yl-ver, .yl-head.compact .yl-ver { padding: 0.125rem 0.5rem; font-size: 0.75rem; }
+  .yl-ver-time { display: none; }
+  .yl-theme-toggle, .yl-menu-toggle, .yl-head.compact .yl-theme-toggle, .yl-head.compact .yl-menu-toggle { width: 2.5rem; height: 2.5rem; font-size: 1.125rem; }
+}
+@media print {
+  .yl-theme-toggle, .yl-menu-toggle { display: none; }
+}

@@ -26,6 +26,7 @@ const SETTINGS = [
 ];
 
 let busy = false;
+const runners = [];
 
 function log({ text, kind }) {
   const span = document.createElement('span');
@@ -37,7 +38,7 @@ function log({ text, kind }) {
 
 function setBusy(on) {
   busy = on;
-  document.querySelectorAll('button:not(#cancel):not(#clear)').forEach((b) => (b.disabled = on));
+  document.querySelectorAll('button:not(#cancel):not(#clear):not([data-yl-theme-toggle])').forEach((b) => (b.disabled = on));
   $('cancel').disabled = !on;
 }
 
@@ -80,16 +81,40 @@ function renderSteps() {
     result.className = 'result';
     li.append(result);
 
-    li.querySelector('button').onclick = async () => {
-      if (s.confirm && !confirm(s.confirm)) return;
+    const run = async (auto) => {
+      if (!auto && s.confirm && !confirm(s.confirm)) return false;
       const r = await call(s.id, input ? { build: input.value.trim() } : {}, li);
-      if (!r) return;
-      if (!r.ok) { result.textContent = '✖ ' + r.error; return; }
+      if (!r) return false;
+      if (!r.ok) { result.textContent = '✖ ' + r.error; return false; }
       result.textContent = typeof r.result === 'string' ? r.result : describeBuild(r.result);
       if (s.id === 'pickBuild') log({ text: result.textContent, kind: r.result.majorChange ? 'err' : 'ok' });
+      return true;
     };
+    li.querySelector('button').onclick = () => run(false);
+    runners.push({ s, li, run });
     $('steps').append(li);
   }
+}
+
+// Chains the steps from the chosen one. Phone taps and the reboot/flash prompts are asked once per step; Cancel in a prompt, a failed step or the Cancel button stops the run.
+async function autorun() {
+  if (busy) return;
+  const from = Number($('from').value);
+  const todo = runners.slice(from);
+  const flashes = todo.filter((r) => r.s.confirm).map((r) => '• ' + r.s.title).join('\n');
+  if (!confirm(`Run ${todo.length} steps from "${todo[0].s.title}" to the end?\n\nThis reboots the phone and flashes:\n${flashes}\n\nYou'll be asked to confirm the phone taps before each step that needs them.`)) return;
+  log({ text: '--- Autorun started ---', kind: 'info' });
+  for (const { s, li, run } of todo) {
+    if (s.tap && !confirm(`${s.title}\n\n📱 ${s.tap}\n\nOK when the phone is ready, Cancel to stop the autorun.`)) {
+      log({ text: `Autorun stopped before "${s.title}".`, kind: 'err' });
+      return;
+    }
+    if (!(await run(true))) {
+      log({ text: `Autorun stopped at "${s.title}".`, kind: 'err' });
+      return;
+    }
+  }
+  log({ text: '--- Autorun finished ---', kind: 'ok' });
 }
 
 function describeBuild(b) {
@@ -148,6 +173,11 @@ tb.onProgress((p) => {
 });
 
 $('refresh').onclick = refresh;
+$('autorun').onclick = autorun;
+$('latest').onclick = async () => {
+  const r = await call('pickBuild', { build: '' });
+  if (r?.ok) log({ text: describeBuild(r.result), kind: r.result.majorChange ? 'err' : 'ok' });
+};
 $('cancel').onclick = () => tb.cancel();
 $('clear').onclick = () => ($('log').textContent = '');
 $('openRoot').onclick = () => tb.openRoot();
@@ -162,5 +192,6 @@ $('custom').onsubmit = (e) => {
 };
 
 renderSteps();
+STEPS.forEach((s, i) => $('from').append(new Option(`${i + 1}. ${s.title}`, i)));
 renderSettings();
 refresh();

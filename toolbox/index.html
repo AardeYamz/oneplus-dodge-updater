@@ -2,22 +2,32 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; font-src data:">
   <title>Dodge Toolbox</title>
+  <script src="theme/yl-theme.js"></script>
+  <link rel="stylesheet" href="theme/yl-fonts.css">
+  <link rel="stylesheet" href="theme/yl-theme.css">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
-    <h1>Dodge Toolbox <small>OnePlus 13 · LineageOS + MindTheGapps + OrangeFox + KernelSU-Next</small></h1>
+  <header class="yl-head compact">
+    <a class="yl-brand" href="#" aria-label="Dodge Toolbox" data-yl-logo></a>
+    <h1 class="yl-title">Dodge Toolbox <span class="yl-ver">OnePlus 13 · LineageOS</span></h1>
     <div class="status">
       <span id="state" class="pill">unknown</span>
       <span id="info"></span>
-      <button id="refresh">Refresh</button>
+      <button id="latest" class="yl-btn filled" title="Ask the LineageOS API for the newest nightly">Get latest build</button>
+      <button id="refresh" class="yl-btn">Refresh</button>
     </div>
+    <button type="button" class="yl-theme-toggle" data-yl-theme-toggle></button>
   </header>
 
   <main>
     <section class="left">
+      <div class="row autorun">
+        <button id="autorun" class="filled">Autorun all steps</button>
+        <label>from <select id="from"></select></label>
+      </div>
       <ol id="steps"></ol>
 
       <details class="box">
