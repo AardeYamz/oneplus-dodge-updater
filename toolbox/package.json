@@ -11,7 +11,7 @@
   "build": {
     "appId": "local.dodge.toolbox",
     "productName": "Dodge Toolbox",
-    "files": ["main.js", "preload.js", "index.html", "renderer.js", "style.css"],
+    "files": ["main.js", "preload.js", "index.html", "renderer.js", "style.css", "theme/*"],
     "win": { "target": "portable" }
   },
   "devDependencies": {
