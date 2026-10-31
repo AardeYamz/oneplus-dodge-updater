@@ -1,5 +1,5 @@
 /* yl-theme.js: the color-mode toggle of v3.yannislam.org (src/app/services/theme/theme.service.ts), for the project pages
-   (trips, 37-bestick-rd, time-location-visual). Source: the yl-theme repo (src/yl-theme.js); edit it there and run
+   (trips, 37-bestick-rd, personal-timeline). Source: the yl-theme repo (src/yl-theme.js); edit it there and run
    scripts/build.py and scripts/sync.py, which overwrite the copies in the project repos.
 
    Modes cycle default -> light -> dark (the button's icon is half-circle / sun / moon, as on v3). Default sets no
@@ -10,7 +10,8 @@
    Markup: <button type="button" class="yl-theme-toggle" data-yl-theme-toggle></button> and
    <a class="yl-brand" href="https://yannislam.org" aria-label="Yannis Lam, home" data-yl-logo></a>; the icons and
    the logo are filled in here (and v3's bars/xmark icons in a <button class="yl-menu-toggle" data-yl-menu="ID">, which
-   opens and closes #ID), and a sticky header (.yl-head.sticky) gets --yl-head-h and .yl-stuck. A "yl-themechange" event ({detail:{mode}}) fires on window after every change. */
+   opens and closes #ID), and a sticky header (.yl-head.sticky) gets --yl-head-h and .yl-stuck. A "yl-themechange" event ({detail:{mode}}) fires on window after every change.
+   It also plays the logo loading screen once per tab session (see loader() below). */
 (function () {
   var KEY = 'yl-theme-mode';
   var MODES = ['default', 'light', 'dark'];
@@ -108,7 +109,105 @@
     window.addEventListener('scroll', stuck, { passive: true });
   }
 
+  // Loading screen: the logo draws its outlines piece by piece, sweeping from the top-left corner to the bottom-right
+  // (v3's loading-screen order), each piece fills in once its outline closes, and the screen fades away once the
+  // page has loaded. Shown once per tab session, never with reduced motion or in print; a click, key, scroll or
+  // touch skips it. It needs no markup and styles itself (inline, in the page's background color), so it covers the
+  // page from the first paint even where the stylesheets come after this script. <html data-yl-loader="off"> opts a
+  // page out.
+  var LOADER_KEY = 'yl-loader-seen';
+  var LOADER_EASE = 'cubic-bezier(0.645, 0.045, 0.355, 1)';
+  var LOADER_MAX_MS = 6000;
+  function loader() {
+    if (root.getAttribute('data-yl-loader') === 'off' || !root.animate) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    try { if (sessionStorage.getItem(LOADER_KEY)) return; sessionStorage.setItem(LOADER_KEY, '1'); } catch (e) { }
+    var mode = current();
+    var NS = 'http://www.w3.org/2000/svg';
+    var el = document.createElement('div');
+    el.className = 'yl-loader';
+    el.setAttribute('aria-hidden', 'true');
+    el.style.cssText = 'position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;background:' + NAVY[mode];
+    var s = document.createElementNS(NS, 'svg');
+    s.setAttribute('viewBox', '274 68 340 676');
+    s.style.cssText = 'height:clamp(160px,40vh,360px);width:auto;overflow:visible';
+    var g = document.createElementNS(NS, 'g');
+    g.style.cssText = 'transform-box:fill-box;transform-origin:center';
+    var pieces = LOGO.map(function (p) {
+      var pts = p[1].split(' ').map(function (xy) { return xy.split(',').map(Number); });
+      var len = 0, cx = 0, cy = 0;
+      pts.forEach(function (a, i) {
+        var b = pts[(i + 1) % pts.length];
+        len += Math.hypot(b[0] - a[0], b[1] - a[1]);
+        cx += a[0]; cy += a[1];
+      });
+      var color = mode === 'light' ? '#000000' : mode === 'dark' ? '#ffffff' : p[0];
+      var path = document.createElementNS(NS, 'path');
+      path.setAttribute('d', 'M' + p[1].replace(/ /g, 'L') + 'Z');
+      path.setAttribute('fill', color);
+      path.setAttribute('fill-opacity', '0');
+      path.setAttribute('stroke', color);
+      path.setAttribute('stroke-width', '4');
+      path.setAttribute('stroke-linejoin', 'round');
+      path.setAttribute('stroke-dasharray', len + ' ' + len);
+      path.setAttribute('stroke-dashoffset', len);
+      g.appendChild(path);
+      return { path: path, len: len, diag: (cx + cy) / pts.length };
+    });
+    s.appendChild(g);
+    el.appendChild(s);
+
+    // Draw each outline, then fill it; the next piece starts while the last is still drawing.
+    pieces.sort(function (a, b) { return a.diag - b.diag; });
+    var drawn = [];
+    pieces.forEach(function (p, i) {
+      var at = 120 + i * 50;
+      p.path.animate([{ strokeDashoffset: p.len + 'px' }, { strokeDashoffset: '0px' }], { duration: 480, delay: at, easing: LOADER_EASE, fill: 'forwards' });
+      drawn.push(p.path.animate([{ fillOpacity: 0 }, { fillOpacity: 1 }], { duration: 320, delay: at + 320, easing: 'ease-out', fill: 'forwards' }).finished);
+    });
+
+    var done = false, breathe;
+    function hide(fast) {
+      if (done) return;
+      done = true;
+      ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(function (t) { window.removeEventListener(t, skip, true); });
+      if (breathe) breathe.cancel();
+      // a small settle as it goes, so the finished mark lands rather than just vanishing
+      if (!fast) g.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.06)' }, { transform: 'scale(1)' }], { duration: 300, easing: 'ease-out' });
+      el.style.pointerEvents = 'none';
+      el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: fast ? 180 : 450, delay: fast ? 0 : 150, easing: 'ease-in-out', fill: 'forwards' })
+        .finished.then(function () { el.remove(); }, function () { el.remove(); });
+    }
+    function skip() { hide(true); }
+    ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(function (t) { window.addEventListener(t, skip, { capture: true, passive: true }); });
+
+    var loaded = new Promise(function (res) {
+      if (document.readyState === 'complete') res();
+      else window.addEventListener('load', res);
+    });
+    Promise.all(drawn).then(function () {
+      // still loading: breathe until it has
+      if (!done && document.readyState !== 'complete') {
+        breathe = g.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.035)' }], { duration: 1000, easing: 'ease-in-out', iterations: Infinity, direction: 'alternate' });
+      }
+      return loaded;
+    }).then(function () { hide(false); }, function () { hide(true); });
+    setTimeout(function () { hide(true); }, LOADER_MAX_MS);
+
+    // This script runs in <head> or at the top of <body>: cover the page before anything after it renders.
+    if (document.body) document.body.insertBefore(el, document.body.firstChild);
+    else {
+      var mo = new MutationObserver(function () {
+        if (!document.body) return;
+        mo.disconnect();
+        document.body.insertBefore(el, document.body.firstChild);
+      });
+      mo.observe(root, { childList: true });
+    }
+  }
+
   apply(stored() || system());
+  loader();
   // Follow the OS live until a choice is stored.
   if (prefersLight && prefersLight.addEventListener) {
     prefersLight.addEventListener('change', function () { if (!stored()) apply(system()); });
