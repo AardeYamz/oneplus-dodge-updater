@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const BASE = 'https://yl-theme.vercel.app';
+const BASE = 'https://theme.yannislam.org';
 const PIN = path.join(__dirname, 'theme.json');
 const DIR = path.join(__dirname, 'theme');
 const FILES = ['yl-theme.css', 'yl-theme.js'];
