@@ -1,4 +1,4 @@
-/* yl-theme.css: the v3.yannislam.org theme for the project pages (trips, 37-bestick-rd, time-location-visual).
+/* yl-theme.css: the v3.yannislam.org theme for the project pages (trips, 37-bestick-rd, personal-timeline).
    Source: the yl-theme repo (src/yl-theme.css). Edit it there and run scripts/build.py and scripts/sync.py; the
    copies in the project repos are overwritten.
 
@@ -210,5 +210,5 @@ html { font-size: clamp(100%, 75% + 0.39vw, 160%); }
   .yl-theme-toggle, .yl-menu-toggle, .yl-head.compact .yl-theme-toggle, .yl-head.compact .yl-menu-toggle { width: 2.5rem; height: 2.5rem; font-size: 1.125rem; }
 }
 @media print {
-  .yl-theme-toggle, .yl-menu-toggle { display: none; }
+  .yl-theme-toggle, .yl-menu-toggle, .yl-loader { display: none !important; }
 }
