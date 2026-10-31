@@ -26,3 +26,7 @@ toolbox/node_modules/
 toolbox/dist/
 # Portable exe copied to the repo root by scripts/build-toolbox.ps1
 Dodge Toolbox *.exe
+
+# Fetched by toolbox/fetch-theme.js from the pinned yl-theme version (toolbox/theme.json)
+toolbox/theme/yl-theme.css
+toolbox/theme/yl-theme.js
