@@ -1,10 +1,10 @@
 <#
 .SYNOPSIS
   Update the OnePlus 13 (dodge) to the latest LineageOS nightly, then restore
-  MindTheGapps, OrangeFox and KernelSU-Next. Follows flash-instructions.md.
+  MindTheGapps, OrangeFox and KernelSU-Next. Follows docs\flash-instructions.md.
 
 .DESCRIPTION
-  Run from the repo root in PowerShell. Needs adb/fastboot (platform-tools) on PATH,
+  Run in PowerShell from anywhere; downloads live in artifacts\ at the repo root. Needs adb/fastboot (platform-tools) on PATH,
   USB debugging authorized, bootloader unlocked.
   Steps that need a tap on the phone pause and wait. Each destructive step asks first.
   A same-major update keeps data. Back up before a major jump (e.g. 24 -> 25).
@@ -16,11 +16,12 @@
 param(
   [string]$Build,
   [string]$Device = 'dodge',
-  [string]$Gapps = "$PSScriptRoot\mindthegapps\MindTheGapps-17.0.0-arm64-20261006_111038.zip",
-  [string]$FoxZip = "$PSScriptRoot\orangefox\OrangeFox-R12.0_2-dodge.zip",
+  [string]$Gapps = "$PSScriptRoot\..\artifacts\mindthegapps\MindTheGapps-17.0.0-arm64-20261006_111038.zip",
+  [string]$FoxZip = "$PSScriptRoot\..\artifacts\orangefox\OrangeFox-R12.0_2-dodge.zip",
   [string]$KsuPackage = 'com.rifsxd.ksunext'
 )
 $ErrorActionPreference = 'Stop'
+$Art = Join-Path (Split-Path $PSScriptRoot) 'artifacts'
 
 function Confirm-Step($msg) {
   if ((Read-Host "$msg [y/N]") -ne 'y') { throw 'Stopped by user.' }
@@ -63,8 +64,8 @@ if ($curMajor -ne $major) { Write-Warning "Major version change ($curMajor -> $m
 Confirm-Step 'Proceed with the update?'
 
 # --- Download and verify ---
-$dir = "$PSScriptRoot\$major-$date"; New-Item -ItemType Directory -Force $dir, "$PSScriptRoot\lineage" | Out-Null
-$zip = "$PSScriptRoot\lineage\$($rel.filename)"
+$dir = "$Art\builds\$major-$date"; New-Item -ItemType Directory -Force $dir, "$Art\lineage" | Out-Null
+$zip = "$Art\lineage\$($rel.filename)"
 Get-Download $rel.url $zip
 if ((Get-FileHash $zip -Algorithm SHA256).Hash -ne $rel.id.ToUpper()) { throw 'SHA-256 mismatch. Delete the zip and retry.' }
 foreach ($img in 'recovery.img', 'init_boot.img', 'build-manifest.xml') {
@@ -73,8 +74,8 @@ foreach ($img in 'recovery.img', 'init_boot.img', 'build-manifest.xml') {
 if ((Get-Item "$dir\recovery.img").Length -ne 104857600) { throw 'recovery.img size is wrong.' }
 
 # --- OrangeFox image (extract once; keep out of the Lineage recovery.img) ---
-Expand-Archive $FoxZip -DestinationPath "$PSScriptRoot\fox-extract" -Force
-if ((Get-Item "$PSScriptRoot\fox-extract\recovery.img").Length -ne 104857600) { throw 'OrangeFox recovery.img is truncated.' }
+Expand-Archive $FoxZip -DestinationPath "$Art\fox-extract" -Force
+if ((Get-Item "$Art\fox-extract\recovery.img").Length -ne 104857600) { throw 'OrangeFox recovery.img is truncated.' }
 
 # --- 1. LineageOS Recovery, then sideload the ROM ---
 adb reboot bootloader; Start-Sleep 12
@@ -96,7 +97,7 @@ Write-Host "Booted: $(adb shell getprop ro.lineage.version)"
 
 # --- 4. OrangeFox last ---
 adb reboot bootloader; Start-Sleep 12
-fastboot flash recovery "$PSScriptRoot\fox-extract\recovery.img"
+fastboot flash recovery "$Art\fox-extract\recovery.img"
 fastboot reboot; Wait-Boot
 
 # --- 5. KernelSU-Next: patch the new init_boot in the manager ---
@@ -104,7 +105,8 @@ adb push "$dir\init_boot.img" "/sdcard/Download/init_boot_$date.img"
 Write-Host "Kernel $(adb shell uname -r) -> KMI android15-6.6 (6.6.x). Set it manually; the manager auto-picks the wrong one."
 Wait-Tap "On the phone: $KsuPackage -> Install -> Select and patch a file -> init_boot_$date.img, KMI android15-6.6"
 $patched = (adb shell "ls -t /sdcard/Download/kernelsu_next_patched_*.img" | Select-Object -First 1).Trim()
-$out = "$PSScriptRoot\ksu-patched-init_boot-$date.img"
+$out = "$Art\images\ksu-patched-init_boot-$date.img"
+New-Item -ItemType Directory -Force (Split-Path $out) | Out-Null
 adb pull $patched $out
 $ver = [regex]::Matches([Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($out)), 'vermagic=[^\x00]{0,40}') | Select-Object -First 1 -ExpandProperty Value
 Write-Host $ver

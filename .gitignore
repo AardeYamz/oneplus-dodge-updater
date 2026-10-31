@@ -1,13 +1,14 @@
-# --- Flashing artifacts: ROM/recovery/GApps/module packages and flashed images ---
-# These are large downloads (single zips 0.5-7.8 GB) and are reproducible from the
-# build pages, so they stay out of version control.
+# --- Downloads and flash artifacts (ROM/GApps/recovery zips, images, tool bundles) ---
+# Large (single zips 0.5-7.8 GB) and reproducible from the build pages, so they stay out
+# of version control. Only the per-build manifests are tracked.
+artifacts/*
+!artifacts/builds/
+artifacts/builds/*/*
+!artifacts/builds/*/build-manifest.xml
+platform-tools/
 *.zip
 *.img
 *.apk
-
-# --- Downloaded tool bundles and extracted recovery contents ---
-platform-tools/
-fox-extract/
 
 # --- Freebuff Desktop project state (holds this folder's project-id) ---
 .freebuff/
@@ -23,3 +24,5 @@ desktop.ini
 # --- Toolbox app build output ---
 toolbox/node_modules/
 toolbox/dist/
+# Portable exe copied to the repo root by scripts/build-toolbox.ps1
+Dodge Toolbox *.exe

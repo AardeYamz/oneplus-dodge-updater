@@ -11,11 +11,20 @@
   "build": {
     "appId": "local.dodge.toolbox",
     "productName": "Dodge Toolbox",
-    "files": ["main.js", "preload.js", "index.html", "renderer.js", "style.css", "theme/*"],
-    "win": { "target": "portable" }
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "renderer.js",
+      "style.css",
+      "theme/*"
+    ],
+    "win": {
+      "target": "portable"
+    }
   },
   "devDependencies": {
-    "electron": "33.2.1",
-    "electron-builder": "25.1.8"
+    "electron": "45.2.1",
+    "electron-builder": "26.18.0"
   }
 }

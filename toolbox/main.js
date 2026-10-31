@@ -1,4 +1,4 @@
-// Dodge Toolbox: Electron front end for flash-instructions.md / update-lineage.ps1.
+// Dodge Toolbox: Electron front end for docs/flash-instructions.md / scripts/update-lineage.ps1.
 // The main process owns everything that touches the phone, the network or the disk.
 const { app, BrowserWindow, ipcMain, dialog, net, shell } = require('electron');
 const { spawn } = require('child_process');
@@ -10,12 +10,12 @@ const { pipeline } = require('stream/promises');
 
 const settingsFile = () => path.join(app.getPath('userData'), 'settings.json');
 const defaults = {
-  // Repo root: the folder that holds update-lineage.ps1 (one up from toolbox\ when run from source).
+  // Repo root: the folder that holds scripts\ and artifacts\ (one up from toolbox\ when run from source).
   root: app.isPackaged ? path.dirname(process.env.PORTABLE_EXECUTABLE_FILE || process.execPath) : path.resolve(__dirname, '..'),
   platformTools: 'C:\\Program Files\\platform-tools',
   device: 'dodge',
-  gapps: 'mindthegapps\\MindTheGapps-17.0.0-arm64-20261006_111038.zip',
-  foxZip: 'orangefox\\OrangeFox-R12.0_2-dodge.zip',
+  gapps: 'artifacts\\mindthegapps\\MindTheGapps-17.0.0-arm64-20261006_111038.zip',
+  foxZip: 'artifacts\\orangefox\\OrangeFox-R12.0_2-dodge.zip',
   kmi: 'android15-6.6',
 };
 
@@ -30,6 +30,7 @@ let downloading = null; // AbortController for the current download
 
 const log = (text, kind = 'out') => win?.webContents.send('log', { text, kind });
 const abs = (p) => (path.isAbsolute(p) ? p : path.join(settings.root, p));
+const artifact = (...p) => abs(path.join('artifacts', ...p)); // downloads and flash images live under artifacts\
 
 // Prefer adb/fastboot from the chosen platform-tools folder; the old Essential ADB (1.0.39) on PATH fails on 3 GB sideloads.
 function tool(name) {
@@ -135,7 +136,7 @@ async function latest(build) {
   const rel = build ? list.find((r) => r.filename.includes(`-${build}-`)) : list[0];
   if (!rel) throw new Error('Build not found in the API response.');
   const [, major, , date] = rel.filename.match(/lineage-(\d+)\.(\d+)-(\d{8})/);
-  target = { rel, major, date, dir: abs(`${major}-${date}`), zip: abs(path.join('lineage', rel.filename)) };
+  target = { rel, major, date, dir: artifact('builds', `${major}-${date}`), zip: artifact('lineage', rel.filename) };
   return target;
 }
 
@@ -183,7 +184,7 @@ const steps = {
   async extractFox() {
     const zip = abs(settings.foxZip);
     if (!fs.existsSync(zip)) throw new Error(`Missing ${zip}`);
-    const dest = abs('fox-extract');
+    const dest = artifact('fox-extract');
     await must(run('powershell.exe', ['-NoProfile', '-Command', `Expand-Archive -LiteralPath '${zip}' -DestinationPath '${dest}' -Force`]));
     if (!sizeIs(path.join(dest, 'recovery.img'), RECOVERY_SIZE)) throw new Error('OrangeFox recovery.img is truncated. Do not flash it.');
     return 'OrangeFox recovery.img ready (104857600 bytes).';
@@ -218,7 +219,7 @@ const steps = {
   },
 
   async flashFox() {
-    const img = abs(path.join('fox-extract', 'recovery.img'));
+    const img = artifact('fox-extract', 'recovery.img');
     if (!sizeIs(img, RECOVERY_SIZE)) throw new Error('Run "Extract OrangeFox" first.');
     await toBootloader();
     await must(fastboot(['flash', 'recovery', img]));
@@ -239,7 +240,8 @@ const steps = {
     const ls = await must(adb(['shell', 'ls -t /sdcard/Download/kernelsu_next_patched_*.img'], { quiet: true }));
     const remote = ls.split(/\r?\n/)[0].trim();
     if (!remote) throw new Error('No kernelsu_next_patched_*.img in /sdcard/Download.');
-    const out = abs(`ksu-patched-init_boot-${t.date}.img`);
+    const out = artifact('images', `ksu-patched-init_boot-${t.date}.img`);
+    fs.mkdirSync(path.dirname(out), { recursive: true });
     await must(adb(['pull', remote, out]));
     const ver = (fs.readFileSync(out).toString('latin1').match(/vermagic=[^\x00]{0,40}/) || ['vermagic not found'])[0];
     log(ver, 'info');
@@ -315,7 +317,7 @@ ipcMain.handle('pick', async (_e, { folder, current }) => {
 ipcMain.handle('openRoot', () => shell.openPath(settings.root));
 ipcMain.handle('runScript', () => {
   // Hand off to the original PowerShell script in its own console window.
-  spawn('cmd.exe', ['/c', 'start', 'powershell', '-NoExit', '-ExecutionPolicy', 'Bypass', '-File', path.join(settings.root, 'update-lineage.ps1')], {
+  spawn('cmd.exe', ['/c', 'start', 'powershell', '-NoExit', '-ExecutionPolicy', 'Bypass', '-File', path.join(settings.root, 'scripts', 'update-lineage.ps1')], {
     cwd: settings.root, detached: true, stdio: 'ignore',
   }).unref();
 });
