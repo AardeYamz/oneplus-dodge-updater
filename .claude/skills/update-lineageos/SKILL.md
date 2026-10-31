@@ -5,7 +5,7 @@ description: Update the OnePlus 13 (CPH2655, codename dodge) to the latest Linea
 
 # Update LineageOS on dodge
 
-Source of truth: `flash-instructions.md` in the repo root. The scripted version is `update-lineage.ps1`.
+Source of truth: `docs/flash-instructions.md`. The scripted version is `scripts/update-lineage.ps1`.
 
 ## Before flashing
 
@@ -21,9 +21,9 @@ Use plain `adb`/`fastboot` from `C:\Program Files\platform-tools`. The old Essen
 
 1. `adb reboot bootloader`, then `fastboot flash recovery <build>\recovery.img` (LineageOS Recovery, 104857600 bytes), then `fastboot reboot recovery`.
 2. User: Apply update -> Apply from ADB. Wait for `sideload` in `adb devices`, then `adb sideload <lineage zip>`. Stopping at ~47% with `Total xfer: 1.00x` is normal.
-3. User: Advanced -> Reboot to recovery (this switches slots), then Apply from ADB again. **Ask the user to confirm the slot switch**: `sideload` showing up can be the old session. Then sideload `mindthegapps\MindTheGapps-17.0.0-...zip`, answering Yes to the signature warning.
+3. User: Advanced -> Reboot to recovery (this switches slots), then Apply from ADB again. **Ask the user to confirm the slot switch**: `sideload` showing up can be the old session. Then sideload `artifacts\mindthegapps\MindTheGapps-17.0.0-...zip`, answering Yes to the signature warning.
 4. User: Reboot system now. Wait for `sys.boot_completed`. Check `ro.lineage.version`.
-5. OrangeFox last: extract `orangefox\OrangeFox-R12.0_2-dodge.zip` to `fox-extract\` (recovery.img must be 104857600 bytes), then `fastboot flash recovery` it. Use `flash`, not `fastboot boot`, which fails with `usb_read failed (31)`.
+5. OrangeFox last: extract `artifacts\orangefox\OrangeFox-R12.0_2-dodge.zip` to `artifacts\fox-extract\` (recovery.img must be 104857600 bytes), then `fastboot flash recovery` it. Use `flash`, not `fastboot boot`, which fails with `usb_read failed (31)`.
 6. KernelSU-Next: the update replaces `init_boot`, so root is lost until it is re-patched.
    - `adb push <build>\init_boot.img /sdcard/Download/`.
    - User patches it in the manager (`com.rifsxd.ksunext`): Install -> Select and patch a file. **The KMI must be set manually to `android15-6.6`**; the manager auto-picks `android17-6.18`, which won't load on the 6.6 kernel.
@@ -39,8 +39,8 @@ Use plain `adb`/`fastboot` from `C:\Program Files\platform-tools`. The old Essen
 
 ## Folder layout
 
-`<major>-<date>\` (e.g. `24-20261027`) holds `recovery.img`, `init_boot.img` and `build-manifest.xml` from `https://mirrorbits.lineageos.org/full/dodge/<date>/`. `lineage\` holds the ROM zips, `mindthegapps\` the GApps zips, `orangefox\` the Fox zips. The Play Integrity modules live in `/data` and survive the update. Re-check Play Integrity afterwards.
+All downloads live under `artifacts\` (gitignored except the build manifests). `artifacts\builds\<major>-<date>\` (e.g. `24-20261027`) holds `recovery.img`, `init_boot.img` and `build-manifest.xml` from `https://mirrorbits.lineageos.org/full/dodge/<date>/`. `artifacts\lineage\` holds the ROM zips, `mindthegapps\` the GApps zips, `orangefox\` the Fox zips, `kernelsu-next\` the manager APKs, `pi-modules\` the Play Integrity modules, `images\` the patched init_boot images. The Play Integrity modules live in `/data` and survive the update. Re-check Play Integrity afterwards.
 
 ## Script
 
-`powershell -File update-lineage.ps1 [-Build yyyyMMdd]` runs the whole sequence with a pause for each phone tap and a y/N check before it starts. Last verified by hand on 2026-10-27 (24.0-20261011 -> 24.0-20261027). The script itself has not been run end to end.
+`powershell -File scripts\update-lineage.ps1 [-Build yyyyMMdd]` runs the whole sequence with a pause for each phone tap and a y/N check before it starts. Last verified by hand on 2026-10-27 (24.0-20261011 -> 24.0-20261027). The script itself has not been run end to end.
