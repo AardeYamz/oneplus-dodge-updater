@@ -2,7 +2,7 @@
 const $ = (id) => document.getElementById(id);
 const tb = window.toolbox;
 
-// Mirrors scripts/update-lineage.ps1 / docs/flash-instructions.md. `tap` is shown before running; `confirm` asks first.
+// Mirrors scripts/update-lineage.ps1 / docs/flash-instructions.md. `tap` is shown before running; `confirm` asks first; `pause` stops the autorun for a prompt before the step.
 const STEPS = [
   { id: 'pickBuild', title: 'Pick the build', desc: 'Asks the LineageOS API for the newest nightly (or the date you type).', input: 'Build date yyyyMMdd (blank = newest)' },
   { id: 'download', title: 'Download and verify', desc: 'ROM zip (SHA-256 checked), recovery.img, init_boot.img and build-manifest.xml. Skips files you already have.' },
@@ -12,7 +12,7 @@ const STEPS = [
   { id: 'sideloadGapps', title: 'Switch slot, sideload MindTheGapps', desc: 'Do not reboot to system before this.', tap: 'On the phone: Advanced → Reboot to recovery, then Apply update → Apply from ADB. Make sure the slot switch really happened: a "sideload" state can be the old session.', confirm: 'Did the phone reboot to recovery (slot switch) and is it on Apply from ADB again?' },
   { id: 'waitBoot', title: 'First boot', desc: 'Waits for sys.boot_completed. The first boot can take several minutes.', tap: 'On the phone: Reboot system now.' },
   { id: 'flashFox', title: 'Flash OrangeFox (last)', desc: 'Replaces LineageOS Recovery with OrangeFox. Keeps data.', confirm: 'Reboot to the bootloader and flash OrangeFox recovery?' },
-  { id: 'pushInitBoot', title: 'Push init_boot for KernelSU-Next', desc: 'Copies the new build\'s init_boot.img to /sdcard/Download.' },
+  { id: 'pushInitBoot', title: 'Push init_boot for KernelSU-Next', desc: 'Copies the new build\'s init_boot.img to /sdcard/Download.', pause: 'The phone is still doing its first boot after OrangeFox. Wait for it to finish, then unlock it: storage stays unavailable while it is locked and the push fails.' },
   { id: 'pullAndFlashKsu', title: 'Pull, check and flash the patched init_boot', desc: 'Checks vermagic matches the KMI before flashing.', tap: 'In KernelSU-Next: Install → Select and patch a file → the pushed init_boot. Set the KMI manually (android15-6.6); the auto pick is wrong.', confirm: 'Patched with the right KMI? Flash it to init_boot?' },
 ];
 
@@ -106,6 +106,10 @@ async function autorun() {
   log({ text: '--- Autorun started ---', kind: 'info' });
   for (const { s, li, run } of todo) {
     if (s.tap && !confirm(`${s.title}\n\n📱 ${s.tap}\n\nOK when the phone is ready, Cancel to stop the autorun.`)) {
+      log({ text: `Autorun stopped before "${s.title}".`, kind: 'err' });
+      return;
+    }
+    if (s.pause && !confirm(`${s.title}\n\n⏸ ${s.pause}\n\nOK to continue, Cancel to stop the autorun.`)) {
       log({ text: `Autorun stopped before "${s.title}".`, kind: 'err' });
       return;
     }
