@@ -5,7 +5,10 @@
   "main": "main.js",
   "private": true,
   "scripts": {
+    "theme": "node fetch-theme.js",
+    "prestart": "npm run theme",
     "start": "electron .",
+    "predist": "npm run theme",
     "dist": "electron-builder --win portable"
   },
   "build": {
