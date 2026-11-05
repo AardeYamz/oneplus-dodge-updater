@@ -127,7 +127,7 @@ Not yet run end to end against the phone.
 
 ## Manual flash instructions
 
-Status: working draft, not yet confirmed end to end. These are the steps `update-lineage.ps1` and the toolbox automate. In the examples, `<major>-<date>` is the build folder, e.g. the LineageOS major version and the build date.
+Status: confirmed working end to end. These are the steps `update-lineage.ps1` and the toolbox automate. In the examples, `<major>-<date>` is the build folder, e.g. the LineageOS major version and the build date.
 
 Run from the repo root in PowerShell with `platform-tools` linked in. Always put `.\platform-tools\` in front of `adb.exe` and `fastboot.exe`, so an older `adb` elsewhere on `PATH` is not picked up. Get the latest from [Android SDK Platform-Tools](https://developer.android.com/tools/releases/platform-tools).
 
