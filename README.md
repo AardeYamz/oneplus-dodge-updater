@@ -6,7 +6,7 @@ Tooling and notes for keeping the OnePlus 13 (CPH2655, codename `dodge`) on the 
 docs/        flash-instructions.md (manual steps), chat-history.md
 scripts/     update-lineage.ps1 (scripted update), build-toolbox.ps1 (builds the exe)
 toolbox/     Electron app that runs the update steps with a live log
-artifacts/   downloads and flash images (gitignored, except builds/*/build-manifest.xml)
+artifacts/   downloads and flash images (gitignored; lives on X:Android DevelopmentDevicesDodge)
   builds/<major>-<date>/   recovery.img, init_boot.img, build-manifest.xml
   lineage/ mindthegapps/ orangefox/ kernelsu-next/ pi-modules/   zips and APKs
   fox-extract/             unzipped OrangeFox recovery.img
