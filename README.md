@@ -200,7 +200,7 @@ To go back to LineageOS Recovery: `.\platform-tools\fastboot.exe flash recovery 
 Use the [latest KernelSU-Next release](https://github.com/KernelSU-Next/KernelSU-Next/releases/latest). Needs a GKI kernel. LineageOS must already be installed and booting. The "installation" page on kernelsu-next.github.io is for building into kernel source; it does not apply here.
 
 1. Check the kernel: `.\platform-tools\adb.exe shell uname -r`. This phone reports `6.6.x-4k-...`, so the KMI is **android15-6.6**. If the kernel is not GKI, stop.
-2. Download the manager APK `KernelSU_Next_v<version>_<build>-release.apk` (not the "spoofed" one; see below) from the release page (saved in `artifacts\kernelsu-next\`).
+2. Download the manager APK `KernelSU_Next_v<version>_<build>-release.apk` from the release page (saved in `artifacts\kernelsu-next\`).
 3. Install it and push the `init_boot.img` from the same LineageOS build:
    ```powershell
    .\platform-tools\adb.exe install "artifacts\kernelsu-next\KernelSU_Next_v<version>_<build>-release.apk"
@@ -224,8 +224,6 @@ Use the [latest KernelSU-Next release](https://github.com/KernelSU-Next/KernelSU
 Backup/undo: the original `artifacts\builds\<major>-<date>\init_boot.img` is the backup. To undo, flash it back with `fastboot flash init_boot`. After every LineageOS update, `init_boot` is replaced, so repeat steps 4-6 with the new build's `init_boot.img`.
 
 Result: KernelSU-Next (LKM, android15-6.6) confirmed working. Saved files in `artifacts\kernelsu-next\`: the APK, the working patched image, and the stock backup.
-
-Tried the "spoofed" manager APK (installs under a random package name) to see if it would hide from detectors on its own: it did not work. The kernel module (flashed in step 6) only recognizes the original manager's app signature, so the spoofed build showed "Not installed" even after re-patching and reflashing with it. Reverted to the original manager, which still shows Working. Uninstalled the spoofed APK.
 
 ### Known issues
 
