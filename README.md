@@ -71,8 +71,8 @@ Scripted version of the [manual flash instructions](#manual-flash-instructions).
 | `-Build` | newest nightly | Build date to install (`yyyyMMdd`), matched against the LineageOS API response. |
 | `-DataRoot` | `$env:DODGE_DATA_ROOT`, then `DODGE_DATA_ROOT` in `.env`, then `X:\Android Development\Devices\Dodge` | Folder holding `artifacts\`. Throws if it does not exist. |
 | `-Device` | `dodge` | LineageOS device codename used for the API and mirror URLs. |
-| `-Gapps` | `<repo>\artifacts\mindthegapps\MindTheGapps-17.0.0-arm64-20261006_111038.zip` | MindTheGapps zip to sideload. |
-| `-FoxZip` | `<repo>\artifacts\orangefox\OrangeFox-R12.0_2-dodge.zip` | OrangeFox zip; `recovery.img` is extracted to `artifacts\fox-extract`. |
+| `-Gapps` | `<DataRoot>\artifacts\mindthegapps\MindTheGapps-17.0.0-arm64-20261006_111038.zip` | MindTheGapps zip to sideload. |
+| `-FoxZip` | `<DataRoot>\artifacts\orangefox\OrangeFox-R12.0_2-dodge.zip` | OrangeFox zip; `recovery.img` is extracted to `artifacts\fox-extract`. |
 | `-KsuPackage` | `com.rifsxd.ksunext` | KernelSU-Next manager package name shown in the on-phone prompt. |
 
 Behavior:
