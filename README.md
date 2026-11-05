@@ -1,4 +1,4 @@
-# dodge
+# oneplus-dodge-updater
 
 Tooling and notes for keeping the OnePlus 13 (CPH2655, codename `dodge`) on the latest LineageOS nightly with MindTheGapps, OrangeFox and KernelSU-Next.
 
