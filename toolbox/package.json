@@ -23,11 +23,14 @@
       "theme/*"
     ],
     "win": {
-      "target": "portable"
-    }
+      "target": "portable",
+      "icon": "theme/icon.png"
+    },
+    "icon": "theme/icon.png"
   },
   "devDependencies": {
     "electron": "45.2.1",
-    "electron-builder": "26.18.0"
+    "electron-builder": "26.18.0",
+    "sharp": "^0.35.5"
   }
 }

@@ -10,6 +10,9 @@ platform-tools/
 # --- Freebuff Desktop project state (holds this folder's project-id) ---
 .freebuff/
 
+# --- Local config (see .env.example) ---
+.env
+
 # --- Local tool/editor settings ---
 .claude/settings.local.json
 
@@ -27,3 +30,5 @@ Dodge Toolbox *.exe
 # Fetched by toolbox/fetch-theme.js from the pinned yl-theme version (toolbox/theme.json)
 toolbox/theme/yl-theme.css
 toolbox/theme/yl-theme.js
+toolbox/theme/favicon.svg
+toolbox/theme/icon.png

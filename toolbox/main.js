@@ -9,10 +9,28 @@ const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
 
 const settingsFile = () => path.join(app.getPath('userData'), 'settings.json');
+// App/repo folder (holds scripts\): one up from toolbox\ when run from source, next to the exe when packaged.
+const appRoot = app.isPackaged ? path.dirname(process.env.PORTABLE_EXECUTABLE_FILE || process.execPath) : path.resolve(__dirname, '..');
+
+// Tiny .env reader (KEY=value lines) so the data location can be set without editing code. Real env vars win.
+function readEnv() {
+  const env = { ...process.env };
+  try {
+    for (const line of fs.readFileSync(path.join(appRoot, '.env'), 'utf8').split(/\r?\n/)) {
+      const m = /^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/i.exec(line);
+      if (m && !line.trim().startsWith('#') && !(m[1] in process.env)) env[m[1]] = m[2].replace(/^(['"])(.*)\1$/, '$2');
+    }
+  } catch { /* no .env */ }
+  return env;
+}
+const env = readEnv();
+// Data root: where artifacts\ and platform-tools\ live (the X: drive). Set DODGE_DATA_ROOT in .env to change it.
+const dataRoot = env.DODGE_DATA_ROOT || 'X:\\Android Development\\Devices\\Dodge';
+
 const defaults = {
-  // Repo root: the folder that holds scripts\ and artifacts\ (one up from toolbox\ when run from source).
-  root: app.isPackaged ? path.dirname(process.env.PORTABLE_EXECUTABLE_FILE || process.execPath) : path.resolve(__dirname, '..'),
-  platformTools: 'C:\\Program Files\\platform-tools',
+  root: appRoot,
+  dataRoot,
+  platformTools: env.DODGE_PLATFORM_TOOLS || path.join(dataRoot, 'platform-tools'),
   device: 'dodge',
   gapps: 'artifacts\\mindthegapps\\MindTheGapps-17.0.0-arm64-20261006_111038.zip',
   foxZip: 'artifacts\\orangefox\\OrangeFox-R12.0_2-dodge.zip',
@@ -29,7 +47,7 @@ let cancelled = false; // set by Cancel; checked by the wait loops
 let downloading = null; // AbortController for the current download
 
 const log = (text, kind = 'out') => win?.webContents.send('log', { text, kind });
-const abs = (p) => (path.isAbsolute(p) ? p : path.join(settings.root, p));
+const abs = (p) => (path.isAbsolute(p) ? p : path.join(settings.dataRoot, p));
 const artifact = (...p) => abs(path.join('artifacts', ...p)); // downloads and flash images live under artifacts\
 
 // Prefer adb/fastboot from the chosen platform-tools folder; the old Essential ADB (1.0.39) on PATH fails on 3 GB sideloads.
@@ -309,12 +327,12 @@ ipcMain.handle('settings:set', (_e, s) => {
 });
 ipcMain.handle('pick', async (_e, { folder, current }) => {
   const r = await dialog.showOpenDialog(win, {
-    defaultPath: current ? abs(current) : settings.root,
+    defaultPath: current ? abs(current) : settings.dataRoot,
     properties: [folder ? 'openDirectory' : 'openFile'],
   });
   return r.canceled ? null : r.filePaths[0];
 });
-ipcMain.handle('openRoot', () => shell.openPath(settings.root));
+ipcMain.handle('openRoot', () => shell.openPath(settings.dataRoot));
 ipcMain.handle('runScript', () => {
   // Hand off to the original PowerShell script in its own console window.
   spawn('cmd.exe', ['/c', 'start', 'powershell', '-NoExit', '-ExecutionPolicy', 'Bypass', '-File', path.join(settings.root, 'scripts', 'update-lineage.ps1')], {
@@ -325,7 +343,7 @@ ipcMain.handle('runScript', () => {
 app.whenReady().then(() => {
   settings = loadSettings();
   win = new BrowserWindow({
-    width: 1100, height: 780, title: 'Dodge Toolbox',
+    width: 1100, height: 780, title: 'Dodge Toolbox', icon: path.join(__dirname, 'theme', 'icon.png'),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true },
   });
   win.setMenuBarVisibility(false);
