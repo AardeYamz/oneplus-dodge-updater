@@ -32,23 +32,27 @@ A same-major update keeps data. Back up before a major jump (e.g. 24 -> 25).
 ## Update flow
 
 ```mermaid
-flowchart TD
-    A[Preflight: adb, fastboot, authorized device] --> B[Pick build from LineageOS API]
-    B --> C{Already on it?}
-    C -- yes --> Z1[Stop]
-    C -- no --> D[Confirm update]
-    D --> E[Download zip, recovery.img, init_boot.img<br/>verify SHA-256 and recovery size]
-    E --> F[Extract OrangeFox recovery.img<br/>check size]
-    F --> G[1. Flash LineageOS Recovery<br/>tap: Apply from ADB<br/>sideload ROM]
-    G --> H[2. Reboot to recovery to switch slot<br/>sideload MindTheGapps]
-    H --> I[3. Reboot to system once]
-    I --> J[4. Flash OrangeFox recovery]
-    J --> K[5. Patch init_boot in KernelSU-Next<br/>KMI android15-6.6<br/>pull, check vermagic]
-    K --> L[Flash patched init_boot, reboot]
-    L --> Z2[Done: confirm manager says Working]
+flowchart LR
+    S1[Preflight] --> S2[Pick build] --> Q{Already<br/>on it?}
+    Q -- yes --> X[Stop]
+    Q -- no --> S3[Confirm] --> S4[Download<br/>and verify] --> S5[Extract<br/>OrangeFox] --> S6[1. Lineage<br/>recovery + ROM] --> S7[2. Switch slot<br/>+ GApps] --> S8[3. First<br/>boot] --> S9[4. OrangeFox] --> S10[5. Patch<br/>init_boot] --> S11[Flash<br/>and reboot] --> D[Done]
 ```
 
-Order matters: the LineageOS zip can overwrite the recovery, so OrangeFox goes on last. `init_boot` is replaced on every update, so KernelSU-Next is re-patched each time.
+| Step | What happens |
+| --- | --- |
+| Preflight | Checks `adb`/`fastboot` are on `PATH` and an authorized device is connected; reads the installed build and kernel. |
+| Pick build | Queries the LineageOS API for the newest nightly (or `-Build`). Stops if the phone is already on it; warns on a major version change. |
+| Confirm | Asks before anything is downloaded or flashed. |
+| Download and verify | Fetches the ROM zip, `recovery.img`, `init_boot.img` and `build-manifest.xml`; checks the zip's SHA-256 and the `recovery.img` size. |
+| Extract OrangeFox | Unzips OrangeFox's `recovery.img` into `fox-extract` and checks its size. |
+| 1. Lineage recovery + ROM | Flashes LineageOS Recovery, then sideloads the ROM (tap **Apply from ADB** first). |
+| 2. Switch slot + GApps | Reboots to recovery to land on the new slot, then sideloads MindTheGapps. |
+| 3. First boot | Reboots to system once and waits for boot to complete. |
+| 4. OrangeFox | Flashes the OrangeFox recovery (last, since the ROM zip can overwrite the recovery). |
+| 5. Patch init_boot | Pushes the new `init_boot.img`; you patch it in KernelSU-Next with KMI `android15-6.6`; the script pulls it and checks `vermagic=` is 6.6.x. |
+| Flash and reboot | Flashes the patched `init_boot`, reboots, and you confirm the manager says **Working**. |
+
+`init_boot` is replaced on every update, so KernelSU-Next is re-patched each time.
 
 ## Scripts
 
