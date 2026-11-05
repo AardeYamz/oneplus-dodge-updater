@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
   Update the OnePlus 13 (dodge) to the latest LineageOS nightly, then restore
-  MindTheGapps, OrangeFox and KernelSU-Next. Follows docs\flash-instructions.md.
+  MindTheGapps, OrangeFox and KernelSU-Next. Follows the manual flash instructions in README.md.
 
 .DESCRIPTION
   Run in PowerShell from anywhere; downloads live in artifacts\ under -DataRoot (default: DODGE_DATA_ROOT from .env, else the X: drive store). Needs adb/fastboot (platform-tools) on PATH,
