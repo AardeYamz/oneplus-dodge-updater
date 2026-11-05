@@ -1,4 +1,4 @@
-// Dodge Toolbox: Electron front end for docs/flash-instructions.md / scripts/update-lineage.ps1.
+// Dodge Toolbox: Electron front end for the manual flash instructions in README.md / scripts/update-lineage.ps1.
 // The main process owns everything that touches the phone, the network or the disk.
 const { app, BrowserWindow, ipcMain, dialog, net, shell } = require('electron');
 const { spawn } = require('child_process');
