@@ -123,11 +123,9 @@ Use:
 
 **Cancel** stops the running command, download or wait. **Quick actions** has reboot buttons, a box for one-off `adb`/`fastboot` commands, and a button that opens `scripts\update-lineage.ps1` in a PowerShell window. Wipe commands (`fastboot -w`, `erase userdata`, `format`, `wipe`) are refused in the command box.
 
-Not yet run end to end against the phone.
-
 ## Manual flash instructions
 
-Status: confirmed working end to end. These are the steps `update-lineage.ps1` and the toolbox automate. In the examples, `<major>-<date>` is the build folder, e.g. the LineageOS major version and the build date.
+These are the steps `update-lineage.ps1` and the toolbox automate. In the examples, `<major>-<date>` is the build folder, e.g. the LineageOS major version and the build date.
 
 Run from the repo root in PowerShell with `platform-tools` linked in. Always put `.\platform-tools\` in front of `adb.exe` and `fastboot.exe`, so an older `adb` elsewhere on `PATH` is not picked up. Get the latest from [Android SDK Platform-Tools](https://developer.android.com/tools/releases/platform-tools).
 
