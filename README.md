@@ -24,7 +24,7 @@ cd toolbox; npm install; npm start               # or the toolbox app, one butto
 pwsh scripts\build-toolbox.ps1                   # build the portable exe
 ```
 
-Prerequisites: Windows, PowerShell, `adb`/`fastboot` (platform-tools) on `PATH` (not the old Essential ADB 1.0.39, which fails on the 3 GB zip), USB debugging authorized, bootloader unlocked. Node.js 20+ for the toolbox.
+Prerequisites: Windows, PowerShell, the latest [Android SDK Platform-Tools](https://developer.android.com/tools/releases/platform-tools) (`adb`/`fastboot`) on `PATH`. Old adb versions (such as 1.0.39) can fail on the 3 GB zip. USB debugging must be authorized and the bootloader unlocked. Node.js 20+ for the toolbox.
 
 A same-major update keeps data. Back up before a major jump (e.g. 24 -> 25).
 
@@ -117,7 +117,7 @@ To build a single portable `.exe`: `npm run dist` (output in `toolbox\dist\`), o
 
 Use:
 
-1. Open **Settings** and check the platform-tools folder. The header shows the adb version and warns if the old Essential ADB (1.0.39) is in use.
+1. Open **Settings** and check the platform-tools folder. The header shows the adb version and warns if it is the known-bad 1.0.39.
 2. Click **Refresh** to see the phone's state (`device`, `sideload`, `fastboot`...), build, kernel and slot.
 3. Run the steps top to bottom. Yellow boxes say what to tap on the phone *before* clicking Run. Steps that reboot or flash ask first.
 
@@ -129,7 +129,7 @@ Not yet run end to end against the phone.
 
 Status: working draft, not yet confirmed end to end. These are the steps `update-lineage.ps1` and the toolbox automate. In the examples, `<major>-<date>` is the build folder, e.g. the LineageOS major version and the build date.
 
-Run from the repo root in PowerShell with `platform-tools` linked in. Always put `.\platform-tools\` in front of `adb.exe` and `fastboot.exe`: plain `adb` picks up the old Essential ADB (1.0.39), which fails on the 3 GB zip.
+Run from the repo root in PowerShell with `platform-tools` linked in. Always put `.\platform-tools\` in front of `adb.exe` and `fastboot.exe`, so an older `adb` elsewhere on `PATH` is not picked up. Get the latest from [Android SDK Platform-Tools](https://developer.android.com/tools/releases/platform-tools).
 
 Files (all builds must match), under `artifacts\`:
 
