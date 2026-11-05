@@ -4,7 +4,7 @@
   MindTheGapps, OrangeFox and KernelSU-Next. Follows docs\flash-instructions.md.
 
 .DESCRIPTION
-  Run in PowerShell from anywhere; downloads live in artifacts\ at the repo root. Needs adb/fastboot (platform-tools) on PATH,
+  Run in PowerShell from anywhere; downloads live in artifacts\ under -DataRoot (default: DODGE_DATA_ROOT from .env, else the X: drive store). Needs adb/fastboot (platform-tools) on PATH,
   USB debugging authorized, bootloader unlocked.
   Steps that need a tap on the phone pause and wait. Each destructive step asks first.
   A same-major update keeps data. Back up before a major jump (e.g. 24 -> 25).
@@ -15,13 +15,28 @@
 [CmdletBinding()]
 param(
   [string]$Build,
+  [string]$DataRoot,
   [string]$Device = 'dodge',
   [string]$Gapps = "$PSScriptRoot\..\artifacts\mindthegapps\MindTheGapps-17.0.0-arm64-20261006_111038.zip",
   [string]$FoxZip = "$PSScriptRoot\..\artifacts\orangefox\OrangeFox-R12.0_2-dodge.zip",
   [string]$KsuPackage = 'com.rifsxd.ksunext'
 )
 $ErrorActionPreference = 'Stop'
-$Art = Join-Path (Split-Path $PSScriptRoot) 'artifacts'
+
+# Data root: -DataRoot, else DODGE_DATA_ROOT (env var or .env at the repo root), else the X: drive store.
+if (-not $DataRoot) { $DataRoot = $env:DODGE_DATA_ROOT }
+if (-not $DataRoot) {
+  $envFile = Join-Path (Split-Path $PSScriptRoot) '.env'
+  if (Test-Path $envFile) {
+    $line = Get-Content $envFile | Where-Object { $_ -match '^\s*DODGE_DATA_ROOT\s*=' } | Select-Object -First 1
+    if ($line) { $DataRoot = ($line -split '=', 2)[1].Trim().Trim('"', "'") }
+  }
+}
+if (-not $DataRoot) { $DataRoot = 'X:\Android Development\Devices\Dodge' }
+if (-not (Test-Path -LiteralPath $DataRoot)) { throw "Data root not found: $DataRoot (is X: connected?)" }
+$Art = Join-Path $DataRoot 'artifacts'
+if (-not $Gapps)  { $Gapps  = Join-Path $Art 'mindthegapps\MindTheGapps-17.0.0-arm64-20261006_111038.zip' }
+if (-not $FoxZip) { $FoxZip = Join-Path $Art 'orangefox\OrangeFox-R12.0_2-dodge.zip' }
 
 function Confirm-Step($msg) {
   if ((Read-Host "$msg [y/N]") -ne 'y') { throw 'Stopped by user.' }
