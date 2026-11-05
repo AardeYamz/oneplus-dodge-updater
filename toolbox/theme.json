@@ -2,6 +2,7 @@
   "version": "v2026-11-04-2151",
   "files": {
     "yl-theme.css": "9ced2d460df2ab57835e64455ddadbc7fd06e4a7e032f94533c5f952c2535752",
-    "yl-theme.js": "911d8d7266a38aee9c8708b60750a6ca666826c5ce188b86853372957e9cad79"
+    "yl-theme.js": "911d8d7266a38aee9c8708b60750a6ca666826c5ce188b86853372957e9cad79",
+    "favicon.svg": "6a7fee6be812acf87e0d0d8cb4458b23e76d925928250ca4f758155f5d8823e4"
   }
 }
