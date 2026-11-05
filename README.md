@@ -7,13 +7,13 @@ Tooling and notes for keeping the OnePlus 13 (CPH2655, codename `dodge`) on the 
 ```
 scripts/     update-lineage.ps1 (scripted update), build-toolbox.ps1 (builds the exe)
 toolbox/     Electron app that runs the update steps with a live log
-artifacts/   downloads and flash images (gitignored; lives on X:\Android Development\Devices\Dodge, linked in)
+artifacts/   downloads and flash images (gitignored; keep it on any drive and link it in, see `DODGE_DATA_ROOT`)
   builds/<major>-<date>/   recovery.img, init_boot.img, build-manifest.xml
-  lineage/ mindthegapps/ orangefox/ kernelsu-next/ pi-modules/   zips and APKs
+  lineage/ mindthegapps/ orangefox/ kernelsu-next/   zips and APKs
   fox-extract/             unzipped OrangeFox recovery.img
   images/                  patched init_boot images, loose images
   archives/                other downloaded bundles
-platform-tools/             adb / fastboot (gitignored; lives on X:\Android Development\Devices\Dodge)
+platform-tools/             adb / fastboot (gitignored; same data folder, linked in)
 ```
 
 ## Quick start
@@ -69,10 +69,10 @@ Scripted version of the [manual flash instructions](#manual-flash-instructions).
 | Parameter | Default | What it does |
 | --- | --- | --- |
 | `-Build` | newest nightly | Build date to install (`yyyyMMdd`), matched against the LineageOS API response. |
-| `-DataRoot` | `$env:DODGE_DATA_ROOT`, then `DODGE_DATA_ROOT` in `.env`, then `X:\Android Development\Devices\Dodge` | Folder holding `artifacts\`. Throws if it does not exist. |
+| `-DataRoot` | `$env:DODGE_DATA_ROOT`, then `DODGE_DATA_ROOT` in `.env`, then the script's built-in default store folder | Folder holding `artifacts\`. Throws if it does not exist. |
 | `-Device` | `dodge` | LineageOS device codename used for the API and mirror URLs. |
-| `-Gapps` | `<DataRoot>\artifacts\mindthegapps\MindTheGapps-17.0.0-arm64-20261006_111038.zip` | MindTheGapps zip to sideload. |
-| `-FoxZip` | `<DataRoot>\artifacts\orangefox\OrangeFox-R12.0_2-dodge.zip` | OrangeFox zip; `recovery.img` is extracted to `artifacts\fox-extract`. |
+| `-Gapps` | the pinned zip in `<DataRoot>\artifacts\mindthegapps\` | MindTheGapps zip to sideload. |
+| `-FoxZip` | the pinned zip in `<DataRoot>\artifacts\orangefox\` | OrangeFox zip; `recovery.img` is extracted to `artifacts\fox-extract`. |
 | `-KsuPackage` | `com.rifsxd.ksunext` | KernelSU-Next manager package name shown in the on-phone prompt. |
 
 Behavior:
@@ -88,7 +88,7 @@ Builds the portable Toolbox exe.
 
 | Parameter | Default | What it does |
 | --- | --- | --- |
-| `-Store` | `X:\Android Development\Devices\Dodge` | Data store. Build output goes to `<Store>\toolbox-dist`; throws if the folder is missing. |
+| `-Store` | the same built-in default store folder | Data store. Build output goes to `<Store>\toolbox-dist`; throws if the folder is missing. |
 
 It runs `npm ci` if `node_modules` is missing, fetches the theme, runs electron-builder (portable, Windows), and copies `Dodge Toolbox <version>.exe` to the repo root. Keep the exe there so it finds `artifacts\` and `scripts\`.
 
@@ -127,24 +127,26 @@ Not yet run end to end against the phone.
 
 ## Manual flash instructions
 
-Status: working draft, not yet confirmed end to end. These are the steps `update-lineage.ps1` and the toolbox automate. Example build: `24-20261011`.
+Status: working draft, not yet confirmed end to end. These are the steps `update-lineage.ps1` and the toolbox automate. In the examples, `<major>-<date>` is the build folder, e.g. the LineageOS major version and the build date.
 
 Run from the repo root in PowerShell with `platform-tools` linked in. Always put `.\platform-tools\` in front of `adb.exe` and `fastboot.exe`: plain `adb` picks up the old Essential ADB (1.0.39), which fails on the 3 GB zip.
 
 Files (all builds must match), under `artifacts\`:
 
-- `builds\24-20261011\` and `lineage\lineage-24.0-20261011-nightly-dodge-signed.zip`
-- `mindthegapps\MindTheGapps-17.0.0-arm64-20261006_111038.zip` (not the 16.0.0 zip)
-- `orangefox\OrangeFox-R12.0_2-dodge.zip` (not R11.3_2)
+- `builds\<major>-<date>\` and `lineage\lineage-<version>-<date>-nightly-dodge-signed.zip`
+- `mindthegapps\MindTheGapps-<version>-arm64-<stamp>.zip` (the version must match the Android version of the LineageOS build)
+- `orangefox\OrangeFox-<version>-dodge.zip` (the newest release for `dodge` from the [OrangeFox download page](https://orangefox.download/device/dodge))
 
 Order: LineageOS, then MindTheGapps, then OrangeFox last. The LineageOS zip can overwrite the recovery, so OrangeFox goes on last.
 
 ### 0. Prepare OrangeFox's recovery.img (once)
 
+Download the zip from the [OrangeFox download page for dodge](https://orangefox.download/device/dodge); see the [OrangeFox installation guide](https://wiki.orangefox.tech/en/guides/installing_orangefox) for the general procedure.
+
 Extract into its own folder so it doesn't overwrite LineageOS's `recovery.img`:
 
 ```powershell
-Expand-Archive "artifacts\orangefox\OrangeFox-R12.0_2-dodge.zip" -DestinationPath "artifacts\fox-extract" -Force
+Expand-Archive "artifacts\orangefox\OrangeFox-<version>-dodge.zip" -DestinationPath "artifacts\fox-extract" -Force
 (Get-Item "artifacts\fox-extract\recovery.img").Length
 ```
 
@@ -158,7 +160,7 @@ On the phone: **Apply update -> Apply from ADB**.
 
 ```powershell
 .\platform-tools\adb.exe devices
-.\platform-tools\adb.exe sideload "artifacts\lineage\lineage-24.0-20261011-nightly-dodge-signed.zip"
+.\platform-tools\adb.exe sideload "artifacts\lineage\lineage-<version>-<date>-nightly-dodge-signed.zip"
 ```
 
 `devices` must list the phone as `sideload`. Stopping at about 47% with `Total xfer: 1.00x` is normal. Wait for the phone to say it finished.
@@ -173,7 +175,7 @@ On the phone: **Apply update -> Apply from ADB**.
 
 ```powershell
 .\platform-tools\adb.exe devices
-.\platform-tools\adb.exe sideload "artifacts\mindthegapps\MindTheGapps-17.0.0-arm64-20261006_111038.zip"
+.\platform-tools\adb.exe sideload "artifacts\mindthegapps\MindTheGapps-<version>-arm64-<stamp>.zip"
 ```
 
 When recovery says it can't verify the signature, choose **Yes**. That's expected.
@@ -193,18 +195,18 @@ Tap **Reboot system now**. The first boot can take several minutes. Confirm Line
 
 This replaces LineageOS Recovery with OrangeFox and keeps your data. If it doesn't land in OrangeFox, use the volume keys in the bootloader menu to pick **Recovery mode**.
 
-To go back to LineageOS Recovery: `.\platform-tools\fastboot.exe flash recovery artifacts\builds\24-20261011\recovery.img`
+To go back to LineageOS Recovery: `.\platform-tools\fastboot.exe flash recovery artifacts\builds\<major>-<date>\recovery.img`
 
 ### 6. Install KernelSU-Next (LKM, patch init_boot)
 
-Latest release at time of writing: v3.4.2 (2026-10-13). Needs a GKI kernel. LineageOS must already be installed and booting. The "installation" page on kernelsu-next.github.io is for building into kernel source; it does not apply here.
+Use the [latest KernelSU-Next release](https://github.com/KernelSU-Next/KernelSU-Next/releases/latest). Needs a GKI kernel. LineageOS must already be installed and booting. The "installation" page on kernelsu-next.github.io is for building into kernel source; it does not apply here.
 
-1. Check the kernel: `.\platform-tools\adb.exe shell uname -r`. This phone reports `6.6.144-4k-...`, so the KMI is **android15-6.6**. If the kernel is not GKI, stop.
-2. Download `KernelSU_Next_v3.4.2_33355-release.apk` (not the "spoofed" one; see below) from https://github.com/KernelSU-Next/KernelSU-Next/releases/tag/v3.4.2 (saved in `artifacts\kernelsu-next\`).
+1. Check the kernel: `.\platform-tools\adb.exe shell uname -r`. This phone reports `6.6.x-4k-...`, so the KMI is **android15-6.6**. If the kernel is not GKI, stop.
+2. Download the manager APK `KernelSU_Next_v<version>_<build>-release.apk` (not the "spoofed" one; see below) from the release page (saved in `artifacts\kernelsu-next\`).
 3. Install it and push the `init_boot.img` from the same LineageOS build:
    ```powershell
-   .\platform-tools\adb.exe install "artifacts\kernelsu-next\KernelSU_Next_v3.4.2_33355-release.apk"
-   .\platform-tools\adb.exe push "artifacts\builds\24-20261011\init_boot.img" /sdcard/Download/
+   .\platform-tools\adb.exe install "artifacts\kernelsu-next\KernelSU_Next_v<version>_<build>-release.apk"
+   .\platform-tools\adb.exe push "artifacts\builds\<major>-<date>\init_boot.img" /sdcard/Download/
    ```
 4. In the manager: **Install -> Select and patch a file** -> pick `init_boot.img`.
    **Choose the KMI manually: `android15-6.6`.** The manager auto-picks by Android version, so on Android 17 it chose `android17-6.18`. That module can't load on a 6.6 kernel, and the manager then says "not installed, click to install".
@@ -219,32 +221,18 @@ Latest release at time of writing: v3.4.2 (2026-10-13). Needs a GKI kernel. Line
    .\platform-tools\fastboot.exe flash init_boot artifacts\images\ksu-patched-init_boot.img
    .\platform-tools\fastboot.exe reboot
    ```
-7. Open the manager. It should show **Working**. The module is built for 6.6.127 and the kernel is 6.6.144, and it loads fine.
+7. Open the manager. It should show **Working**. The module only needs to match the kernel's KMI, not the exact 6.6.x patch level.
 
-Backup/undo: the original `artifacts\builds\24-20261011\init_boot.img` is the backup. To undo, flash it back with `fastboot flash init_boot`. After every LineageOS update, `init_boot` is replaced, so repeat steps 4-6 with the new build's `init_boot.img`.
+Backup/undo: the original `artifacts\builds\<major>-<date>\init_boot.img` is the backup. To undo, flash it back with `fastboot flash init_boot`. After every LineageOS update, `init_boot` is replaced, so repeat steps 4-6 with the new build's `init_boot.img`.
 
-Result: KernelSU-Next v3.4.2 (LKM, android15-6.6) confirmed working on LineageOS 24.0-20261011 (2026-10-17). Saved files in `artifacts\kernelsu-next\`: the APK, the working patched image, and the stock backup.
+Result: KernelSU-Next (LKM, android15-6.6) confirmed working. Saved files in `artifacts\kernelsu-next\`: the APK, the working patched image, and the stock backup.
 
 Tried the "spoofed" manager APK (installs under a random package name) to see if it would hide from detectors on its own: it did not work. The kernel module (flashed in step 6) only recognizes the original manager's app signature, so the spoofed build showed "Not installed" even after re-patching and reflashing with it. Reverted to the original manager, which still shows Working. Uninstalled the spoofed APK.
-
-### 7. Play Integrity: result so far (2026-10-17)
-
-Checked with the Play Integrity API Checker app: **basic integrity passes. Device and strong integrity fail**, and were not pursued further. They require hardware attestation that an unlocked bootloader can't produce without a sourced keybox, which is out of scope here.
-
-Module stack that got basic integrity passing: Zygisk Next (already installed) + Tricky Store OSS + its Addon + PlayIntegrityFork + VBMeta Disguiser, replacing the original Play Integrity Fix / Tricky Store / TEESimulator / Yurikey combo (uninstall those first; they conflict). All installed via the manager's **Module -> Install from storage**, since adb has no root on this device. After install + reboot + clearing Play Store/Services/Wallet data, `vbmeta.device_state` reads `locked`.
-
-Whether basic integrity is enough depends on which app needs it (bank vs. Wallet vs. other); still not confirmed.
-
-### 8. App-level hiding (status)
-
-Added Vector + HMA-OSS (Zygisk modules) and set up a blacklist-style app profile hiding the root manager and integrity-checker apps from a chosen set of target apps (banking/work apps). This hides the root manager from apps that query Android's installed-package list, but does **not** stop apps that check the filesystem directly: a native-detection test app still flags the root manager's package three separate ways even with the profile applied.
-
-Net result: Play Integrity basic passes; app-level root hiding is partial and app-dependent. Confirm against the specific target app before relying on this.
 
 ### Known issues
 
 - `fastboot boot artifacts\fox-extract\recovery.img` transferred the image but failed with `usb_read failed ... (31)`. Use `fastboot flash recovery` instead (step 5).
-- Mind the build folder name: `24-20261011` (not `24-202611`).
+- Mind the build folder name: use the full `<major>-<date>`, not a truncated date.
 - Don't run `fastboot -w`, `fastboot erase userdata`, or "Format data" in recovery unless you mean to wipe the phone.
 - KernelSU-Next says "not installed" after flashing: the patch used the wrong KMI (auto-picked `android17-6.18`). Re-patch with `android15-6.6` and reflash (step 6).
 - adb has no root on this device (`su` is inaccessible), so KernelSU module installs/config have to be done through the manager app's UI, not adb/Termux commands.
