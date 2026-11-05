@@ -39,7 +39,7 @@ Use plain `adb`/`fastboot` from `C:\Program Files\platform-tools`. The old Essen
 
 ## Folder layout
 
-All downloads live under `artifacts\` (gitignored except the build manifests). `artifacts\builds\<major>-<date>\` (e.g. `24-20261027`) holds `recovery.img`, `init_boot.img` and `build-manifest.xml` from `https://mirrorbits.lineageos.org/full/dodge/<date>/`. `artifacts\lineage\` holds the ROM zips, `mindthegapps\` the GApps zips, `orangefox\` the Fox zips, `kernelsu-next\` the manager APKs, `pi-modules\` the Play Integrity modules, `images\` the patched init_boot images. The Play Integrity modules live in `/data` and survive the update. Re-check Play Integrity afterwards.
+All downloads live under `artifacts\` (gitignored). `artifacts\builds\<major>-<date>\` (e.g. `24-20261027`) holds `recovery.img`, `init_boot.img` and `build-manifest.xml` from `https://mirrorbits.lineageos.org/full/dodge/<date>/`. `artifacts\lineage\` holds the ROM zips, `mindthegapps\` the GApps zips, `orangefox\` the Fox zips, `kernelsu-next\` the manager APKs, `pi-modules\` the Play Integrity modules, `images\` the patched init_boot images. The Play Integrity modules live in `/data` and survive the update. Re-check Play Integrity afterwards.
 
 ## Script
 

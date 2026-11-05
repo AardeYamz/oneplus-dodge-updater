@@ -1,10 +1,7 @@
 # --- Downloads and flash artifacts (ROM/GApps/recovery zips, images, tool bundles) ---
 # Large (single zips 0.5-7.8 GB) and reproducible from the build pages, so they stay out
-# of version control. Only the per-build manifests are tracked.
+# of version control.
 artifacts/*
-!artifacts/builds/
-artifacts/builds/*/*
-!artifacts/builds/*/build-manifest.xml
 platform-tools/
 *.zip
 *.img
