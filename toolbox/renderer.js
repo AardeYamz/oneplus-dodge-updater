@@ -17,7 +17,8 @@ const STEPS = [
 ];
 
 const SETTINGS = [
-  ['root', 'Working folder (holds artifacts\\ and scripts\\)', true],
+  ['dataRoot', 'Data folder (holds artifacts\\ and platform-tools\\; X: drive)', true],
+  ['root', 'App folder (holds scripts\\)', true],
   ['platformTools', 'platform-tools folder (adb.exe / fastboot.exe)', true],
   ['gapps', 'MindTheGapps zip', false],
   ['foxZip', 'OrangeFox zip', false],
