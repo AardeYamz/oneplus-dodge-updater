@@ -17,8 +17,8 @@ param(
   [string]$Build,
   [string]$DataRoot,
   [string]$Device = 'dodge',
-  [string]$Gapps = "$PSScriptRoot\..\artifacts\mindthegapps\MindTheGapps-17.0.0-arm64-20261006_111038.zip",
-  [string]$FoxZip = "$PSScriptRoot\..\artifacts\orangefox\OrangeFox-R12.0_2-dodge.zip",
+  [string]$Gapps,
+  [string]$FoxZip,
   [string]$KsuPackage = 'com.rifsxd.ksunext'
 )
 $ErrorActionPreference = 'Stop'
