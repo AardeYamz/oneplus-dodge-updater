@@ -29,6 +29,13 @@ Prerequisites: Windows, PowerShell, `adb`/`fastboot` (platform-tools) on `PATH` 
 
 A same-major update keeps data. Back up before a major jump (e.g. 24 -> 25).
 
+LineageOS documentation for this device:
+
+- [Device page (dodge)](https://wiki.lineageos.org/devices/dodge/)
+- [Install guide](https://wiki.lineageos.org/devices/dodge/install/)
+- [Upgrade guide](https://wiki.lineageos.org/devices/dodge/upgrade/) (check it for required wipes on a major jump)
+- [Nightly builds](https://download.lineageos.org/devices/dodge/builds)
+
 ## Update flow
 
 ```mermaid
