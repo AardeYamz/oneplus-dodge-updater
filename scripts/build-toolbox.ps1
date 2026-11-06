@@ -5,13 +5,16 @@
   to the repo root on C:, where the updater lives.
 #>
 param(
-    [string]$Store = 'X:\Android Development\Devices\Dodge'
+    [string]$Store = 'X:\Android Development\Devices\Dodge',
+    # Skip compression: ~15 s instead of ~2 min, but the exe is ~360 MB instead of ~105 MB. For local testing.
+    [switch]$Fast
 )
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path $PSScriptRoot
 $app  = Join-Path $root 'toolbox'
-$out  = Join-Path $Store 'toolbox-dist'
+# Build on the local disk: the unpacked Electron tree is thousands of small files, slow on X:.
+$out  = Join-Path $env:LOCALAPPDATA 'dodge-toolbox-dist'
 
 if (-not (Test-Path -LiteralPath $Store)) { throw "Store folder not found: $Store (is X: connected?)" }
 
@@ -25,7 +28,8 @@ try {
     # Call electron-builder directly: npm's cmd shim splits the output path at the spaces.
     npm run theme
     if ($LASTEXITCODE) { throw 'theme fetch failed' }
-    node node_modules/electron-builder/cli.js --win portable "--config.directories.output=$out"
+    $extra = @(if ($Fast) { '--config.compression=store' })
+    node node_modules/electron-builder/cli.js --win portable "--config.directories.output=$out" @extra
     if ($LASTEXITCODE) { throw 'electron-builder failed' }
 
     $exe = Get-ChildItem -LiteralPath $out -Filter 'Dodge Toolbox *.exe' |
