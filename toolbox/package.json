@@ -13,6 +13,8 @@
   },
   "build": {
     "appId": "local.dodge.toolbox",
+    "npmRebuild": false,
+    "electronLanguages": ["en-US"],
     "productName": "Dodge Toolbox",
     "files": [
       "main.js",
