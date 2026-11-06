@@ -32,3 +32,6 @@ toolbox/theme/yl-theme.css
 toolbox/theme/yl-theme.js
 toolbox/theme/favicon.svg
 toolbox/theme/icon.png
+
+# Licensed Calibre / SF Mono fonts: local builds only, never committed. Optional: the link in index.html is skipped if missing.
+toolbox/theme/yl-fonts.css

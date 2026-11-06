@@ -50,3 +50,10 @@ label { display: block; margin-top: 8px; font-size: 0.8125rem; color: var(--mute
 .autorun { align-items: center; margin: 0 0 0.75rem; }
 .autorun label { margin: 0; display: flex; align-items: center; gap: 6px; }
 select { font: inherit; padding: 5px 8px; border-radius: var(--md-sys-shape-corner-small); border: 1px solid var(--line); background: var(--bg); color: var(--text); max-width: 16rem; }
+
+/* Themed confirm dialog (see ask() in renderer.js) */
+dialog.ask { max-width: 32rem; padding: 1.25rem 1.5rem; border: 1px solid var(--line); border-radius: var(--md-sys-shape-corner-large, 1rem); background: var(--panel); color: var(--text); }
+dialog.ask::backdrop { background: color-mix(in srgb, #000 55%, transparent); }
+dialog.ask h3 { margin: 0 0 0.5rem; font: 600 1.125rem var(--yl-font); }
+dialog.ask p { margin: 0; white-space: pre-wrap; color: var(--muted); font-size: 0.875rem; }
+dialog.ask .row { justify-content: flex-end; margin-top: 1rem; }

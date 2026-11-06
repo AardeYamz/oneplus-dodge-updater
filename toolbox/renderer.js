@@ -26,6 +26,33 @@ const SETTINGS = [
   ['kmi', 'KernelSU KMI', null],
 ];
 
+// Themed replacement for window.confirm(): resolves true on OK, false on Cancel/Esc.
+function ask(title, body, { ok = 'OK', cancel = 'Cancel' } = {}) {
+  return new Promise((resolve) => {
+    const dlg = document.createElement('dialog');
+    dlg.className = 'ask';
+    const h = document.createElement('h3');
+    h.textContent = title;
+    const p = document.createElement('p');
+    p.textContent = body;
+    const row = document.createElement('div');
+    row.className = 'row';
+    const yes = document.createElement('button');
+    yes.className = 'primary';
+    yes.textContent = ok;
+    const no = document.createElement('button');
+    no.textContent = cancel;
+    row.append(yes, no);
+    dlg.append(h, p, row);
+    yes.onclick = () => dlg.close('ok');
+    no.onclick = () => dlg.close('cancel');
+    dlg.onclose = () => { dlg.remove(); resolve(dlg.returnValue === 'ok'); };
+    document.body.append(dlg);
+    dlg.showModal();
+    yes.focus();
+  });
+}
+
 let busy = false;
 const runners = [];
 
@@ -83,7 +110,7 @@ function renderSteps() {
     li.append(result);
 
     const run = async (auto) => {
-      if (!auto && s.confirm && !confirm(s.confirm)) return false;
+      if (!auto && s.confirm && !(await ask(s.title, s.confirm))) return false;
       const r = await call(s.id, input ? { build: input.value.trim() } : {}, li);
       if (!r) return false;
       if (!r.ok) { result.textContent = '✖ ' + r.error; return false; }
@@ -103,14 +130,14 @@ async function autorun() {
   const from = Number($('from').value);
   const todo = runners.slice(from);
   const flashes = todo.filter((r) => r.s.confirm).map((r) => '• ' + r.s.title).join('\n');
-  if (!confirm(`Run ${todo.length} steps from "${todo[0].s.title}" to the end?\n\nThis reboots the phone and flashes:\n${flashes}\n\nYou'll be asked to confirm the phone taps before each step that needs them.`)) return;
+  if (!(await ask('Autorun', `Run ${todo.length} steps from "${todo[0].s.title}" to the end?\n\nThis reboots the phone and flashes:\n${flashes}\n\nYou'll be asked to confirm the phone taps before each step that needs them.`, { ok: 'Start' }))) return;
   log({ text: '--- Autorun started ---', kind: 'info' });
   for (const { s, li, run } of todo) {
-    if (s.tap && !confirm(`${s.title}\n\n📱 ${s.tap}\n\nOK when the phone is ready, Cancel to stop the autorun.`)) {
+    if (s.tap && !(await ask(s.title, `📱 ${s.tap}\n\nOK when the phone is ready, Cancel to stop the autorun.`))) {
       log({ text: `Autorun stopped before "${s.title}".`, kind: 'err' });
       return;
     }
-    if (s.pause && !confirm(`${s.title}\n\n⏸ ${s.pause}\n\nOK to continue, Cancel to stop the autorun.`)) {
+    if (s.pause && !(await ask(s.title, `⏸ ${s.pause}\n\nOK to continue, Cancel to stop the autorun.`))) {
       log({ text: `Autorun stopped before "${s.title}".`, kind: 'err' });
       return;
     }
@@ -188,7 +215,7 @@ $('clear').onclick = () => ($('log').textContent = '');
 $('openRoot').onclick = () => tb.openRoot();
 $('runScript').onclick = () => tb.runScript();
 document.querySelectorAll('[data-reboot]').forEach((b) => {
-  b.onclick = () => confirm(`Reboot to ${b.dataset.reboot}?`) && call('reboot', { to: b.dataset.reboot });
+  b.onclick = async () => (await ask('Reboot', `Reboot to ${b.dataset.reboot}?`)) && call('reboot', { to: b.dataset.reboot });
 });
 $('custom').onsubmit = (e) => {
   e.preventDefault();
