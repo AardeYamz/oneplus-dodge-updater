@@ -3,7 +3,6 @@
 //   node fetch-theme.js          fetch what is missing or wrong (npm start / npm run dist do this first)
 //   node fetch-theme.js --bump   pin the newest published version and rewrite theme.json
 // Also fetches favicon.svg and renders theme/icon.png from it.
-// theme/yl-fonts.css is licensed and not published: it stays in the repo.
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
