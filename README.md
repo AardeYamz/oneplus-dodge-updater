@@ -6,7 +6,7 @@ Tooling and notes for keeping the [OnePlus 13](https://en.wikipedia.org/wiki/One
 
 ```
 scripts/     update-lineage.ps1 (scripted update), build-toolbox.ps1 (builds the exe)
-toolbox/     Electron app that runs the update steps with a live log
+toolbox/     Rust (Tauri) app that runs the update steps with a live log
 artifacts/   downloads and flash images (gitignored; keep it on any drive and link it in, see `DODGE_DATA_ROOT`)
   builds/<major>-<date>/   recovery.img, init_boot.img, build-manifest.xml
   lineage/ mindthegapps/ orangefox/ kernelsu-next/   zips and APKs
@@ -20,11 +20,11 @@ platform-tools/             adb / fastboot (gitignored; same data folder, linked
 
 ```powershell
 powershell -File scripts\update-lineage.ps1      # scripted update
-cd toolbox; npm install; npm start               # or the toolbox app, one button per step
+cd toolbox; cargo run                             # or the toolbox app, one button per step
 pwsh scripts\build-toolbox.ps1                   # build the portable exe
 ```
 
-Prerequisites: Windows, PowerShell, the latest [Android SDK Platform-Tools](https://developer.android.com/tools/releases/platform-tools) (`adb`/`fastboot`) on `PATH`. Old adb versions (such as 1.0.39) can fail on the 3 GB zip. USB debugging must be authorized and the bootloader unlocked. Node.js 20+ for the toolbox.
+Prerequisites: Windows, PowerShell, the latest [Android SDK Platform-Tools](https://developer.android.com/tools/releases/platform-tools) (`adb`/`fastboot`) on `PATH`. Old adb versions (such as 1.0.39) can fail on the 3 GB zip. USB debugging must be authorized and the bootloader unlocked. [Rust](https://rustup.rs) (MSVC toolchain) to build the toolbox.
 
 A same-major update keeps data. Back up before a major jump (e.g. 24 -> 25).
 
@@ -88,9 +88,11 @@ Builds the portable Toolbox exe.
 
 | Parameter | Default | What it does |
 | --- | --- | --- |
-| `-Store` | the same built-in default store folder | Data store. Build output goes to `<Store>\toolbox-dist`; throws if the folder is missing. |
+| `-Store` | the same built-in default store folder | Data store; throws if the folder is missing. |
+| `-Fast` | off | Quicker build (no LTO), slightly larger exe. For local testing. |
+| `-BumpTheme` | off | Pin the newest published theme version in `toolbox\theme.json` first. |
 
-It runs `npm ci` if `node_modules` is missing, fetches the theme, runs electron-builder (portable, Windows), and copies `Dodge Toolbox <version>.exe` to the repo root. Keep the exe there so it finds `artifacts\` and `scripts\`.
+It runs `cargo build` (output in `%LOCALAPPDATA%\dodge-toolbox-target`; the build fetches the theme first) and copies `Dodge Toolbox <version>.exe` to the repo root. Keep the exe there so it finds `artifacts\` and `scripts\`.
 
 ### Configuration
 
@@ -103,17 +105,16 @@ Copy `.env.example` to `.env` (gitignored). Real environment variables win over 
 
 ## Dodge Toolbox
 
-An Electron app (Windows) that runs the same sequence one button at a time, with a live log.
+A Windows app that runs the same sequence one button at a time, with a live log. It is written in Rust with [Tauri](https://tauri.app): the page in `toolbox\ui\` is drawn by the WebView2 runtime that ships with Windows 10/11 instead of a bundled Chromium, so the exe is a few MB instead of ~105 MB and uses less memory. `toolbox\src\` does the phone, network and disk work that `main.js` used to.
 
 ```powershell
 cd toolbox
-npm install
-npm start
+cargo run
 ```
 
-The shared theme (`theme/yl-theme.css`, `theme/yl-theme.js`) is not committed. `npm start` and `npm run dist` first run `fetch-theme.js`, which downloads the version pinned in `theme.json` from https://theme.yannislam.org and checks its SHA-256 (needs a network connection the first time). `npm run theme` does it alone; `node fetch-theme.js --bump` pins the newest version.
+The shared theme (`ui/theme/yl-theme.css`, `ui/theme/yl-theme.js`) is not committed. Every build first runs `build.rs`, which downloads the version pinned in `theme.json` from https://theme.yannislam.org, checks its SHA-256 (needs a network connection the first time) and renders the window/exe icon from the theme's `favicon.svg`. `scripts\build-toolbox.ps1 -BumpTheme` pins the newest version. `DODGE_SKIP_THEME=1` builds without the theme, for offline compile checks only.
 
-To build a single portable `.exe`: `npm run dist` (output in `toolbox\dist\`), or use `scripts\build-toolbox.ps1` as above. Set the working folder in Settings if the exe is not in the repo root.
+To build the single portable `.exe`: `cargo build --release` (output `toolbox\target\release\dodge-toolbox.exe`), or use `scripts\build-toolbox.ps1` as above. Settings are kept in `%APPDATA%\Dodge Toolbox\settings.json`, the same file the Electron version used. Set the working folder in Settings if the exe is not in the repo root.
 
 Use:
 
