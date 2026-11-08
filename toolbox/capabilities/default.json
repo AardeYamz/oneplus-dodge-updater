@@ -1,0 +1,6 @@
+{
+  "identifier": "default",
+  "description": "The toolbox window: the app's own commands plus event listening for the log and progress bar.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

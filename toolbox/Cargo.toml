@@ -1,0 +1,48 @@
+[package]
+name = "dodge-toolbox"
+version = "0.2.0"
+edition = "2021"
+description = "Windows toolbox for updating LineageOS on the OnePlus 13 (dodge)"
+publish = false
+
+[dependencies]
+# The system WebView (WebView2 on Windows) renders ui/; the Rust side does what main.js used to.
+tauri = { version = "2", features = ["custom-protocol"] }
+serde_json = "1"
+sha2 = "0.10"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+rfd = { version = "0.15", default-features = false, features = ["gtk3"] }
+
+# HTTPS through the OS TLS stack (SChannel) on Windows: system certificates, no bundled crypto.
+[target.'cfg(windows)'.dependencies]
+ureq = { version = "2", default-features = false, features = ["native-tls"] }
+native-tls = "0.2"
+
+[target.'cfg(not(windows))'.dependencies]
+ureq = "2"
+
+[build-dependencies]
+tauri-build = "2"
+ureq = "2"
+sha2 = "0.10"
+serde_json = "1"
+resvg = "0.45"
+ico = "0.4"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+# scripts\build-toolbox.ps1 -Fast: quicker local builds, larger exe.
+[profile.fast]
+inherits = "release"
+opt-level = 1
+lto = false
+codegen-units = 16
+
+# build.rs renders the icon with resvg; unoptimized build scripts make that slow.
+[profile.fast.build-override]
+opt-level = 1

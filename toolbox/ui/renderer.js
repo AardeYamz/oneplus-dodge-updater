@@ -1,4 +1,4 @@
-// UI for the step list, log and settings. All real work happens in main.js via window.toolbox.
+// UI for the step list, log and settings. All real work happens in the Rust side (src/) via window.toolbox (bridge.js).
 const $ = (id) => document.getElementById(id);
 const tb = window.toolbox;
 
