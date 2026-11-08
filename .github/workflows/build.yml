@@ -1,0 +1,26 @@
+name: Build
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: toolbox
+      - name: Test
+        run: cargo test --manifest-path toolbox/Cargo.toml --profile fast
+      - name: Build
+        run: cargo build --manifest-path toolbox/Cargo.toml --profile fast
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dodge-toolbox
+          path: toolbox/target/fast/dodge-toolbox.exe
