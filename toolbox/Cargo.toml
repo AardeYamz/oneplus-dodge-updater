@@ -42,3 +42,7 @@ inherits = "release"
 opt-level = 1
 lto = false
 codegen-units = 16
+
+# build.rs renders the icon with resvg; unoptimized build scripts make that slow.
+[profile.fast.build-override]
+opt-level = 1
