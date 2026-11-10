@@ -36,3 +36,10 @@ toolbox/ui/theme/
 # Licensed Calibre / SF Mono fonts: local builds only, never committed. Optional: the link in index.html is skipped if missing.
 toolbox/ui/theme/yl-fonts.css
 /toolbox/node_modules
+
+# Junction to X:\...\Dodge\toolbox-dist (see platform-tools)
+toolbox-dist/
+artifacts.local-copy/
+
+# Junctions to the X: drive (Dodge only)
+x-drive/
