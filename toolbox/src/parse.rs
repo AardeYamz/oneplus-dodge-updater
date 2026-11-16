@@ -101,6 +101,47 @@ pub fn env_line(line: &str) -> Option<(String, String)> {
     Some((k.to_string(), unq.unwrap_or(v).to_string()))
 }
 
+/// Number of devices in `adb devices` / `fastboot devices` output (lines of `serial<TAB or spaces>state`, header and blanks skipped).
+pub fn device_count(out: &str) -> usize {
+    out.lines()
+        .filter(|l| !l.starts_with(char::is_whitespace))
+        .filter(|l| {
+            let mut t = l.split_whitespace();
+            t.next().is_some() && t.next().is_some() && !l.starts_with("List of devices") && !l.starts_with('*')
+        })
+        .count()
+}
+
+/// `fastboot getvar product` prints "product: dodge" (to stderr) followed by "Finished. Total time: ...".
+pub fn fastboot_product(out: &str) -> Option<String> {
+    out.lines().find_map(|l| l.trim().strip_prefix("product:").map(|v| v.trim().to_string())).filter(|v| !v.is_empty())
+}
+
+/// The patched image KernelSU-Next wrote for this build: the newest candidate from `stat -c '%Y %n'` lines whose
+/// mtime is at or after `pushed_at` (device clock, seconds). Older leftovers from earlier builds are refused.
+pub fn newest_patched(listing: &str, pushed_at: u64) -> Result<String, String> {
+    let mut all = 0;
+    let mut best: Option<(u64, &str)> = None;
+    for line in listing.lines() {
+        let Some((mtime, path)) = line.trim().split_once(' ') else { continue };
+        let (Ok(mtime), path) = (mtime.parse::<u64>(), path.trim()) else { continue };
+        if path.is_empty() {
+            continue;
+        }
+        all += 1;
+        if mtime >= pushed_at && best.is_none_or(|(m, _)| mtime > m) {
+            best = Some((mtime, path));
+        }
+    }
+    match best {
+        Some((_, path)) => Ok(path.to_string()),
+        None if all == 0 => Err("No kernelsu_next_patched_*.img in /sdcard/Download.".into()),
+        None => Err(format!(
+            "Only kernelsu_next_patched_*.img files older than this build's init_boot push were found ({all}). Patch the pushed init_boot again."
+        )),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -139,5 +180,27 @@ mod tests {
         assert_eq!(env_line(r#"DODGE_DATA_ROOT = "X:\Dodge" "#), Some(("DODGE_DATA_ROOT".into(), r"X:\Dodge".into())));
         assert_eq!(env_line("# DODGE_PLATFORM_TOOLS="), None);
         assert_eq!(env_line("bad key=1"), None);
+    }
+
+    #[test]
+    fn guards() {
+        assert_eq!(device_count("List of devices attached\nabc\tdevice\ndef\toffline\n\n"), 2);
+        assert_eq!(device_count("List of devices attached\n\n"), 0);
+        assert_eq!(device_count("* daemon started successfully\nList of devices attached\nabc\tdevice\n"), 1);
+        assert_eq!(device_count("abc123\tfastboot\n"), 1);
+        assert_eq!(fastboot_product("product: dodge\nFinished. Total time: 0.001s\n").as_deref(), Some("dodge"));
+        assert_eq!(fastboot_product("product: \nFinished.\n"), None);
+        assert_eq!(fastboot_product("< waiting for any device >"), None);
+    }
+
+    #[test]
+    fn patched_image() {
+        let l = "100 /sdcard/Download/kernelsu_next_patched_a.img\n250 /sdcard/Download/kernelsu_next_patched_b.img\n";
+        assert_eq!(newest_patched(l, 200).as_deref(), Ok("/sdcard/Download/kernelsu_next_patched_b.img"));
+        assert_eq!(newest_patched(l, 250).as_deref(), Ok("/sdcard/Download/kernelsu_next_patched_b.img"));
+        assert!(newest_patched(l, 251).unwrap_err().contains("older"));
+        assert!(newest_patched("", 0).unwrap_err().starts_with("No kernelsu"));
+        assert!(newest_patched("stat: no such file\n", 0).is_err());
+        assert_eq!(newest_patched("300 /sdcard/Download/a b.img\n", 1).as_deref(), Ok("/sdcard/Download/a b.img"));
     }
 }
