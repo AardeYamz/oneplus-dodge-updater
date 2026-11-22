@@ -1,6 +1,6 @@
-# oneplus-dodge-updater
+# oneplus-dodge-updater reference
 
-Tooling and notes for keeping the [OnePlus 13](https://en.wikipedia.org/wiki/OnePlus_13) (CPH2655, codename `dodge`) on the latest LineageOS nightly with MindTheGapps, OrangeFox and KernelSU-Next.
+Full reference moved here from the [README](../README.md). Tooling and notes for keeping the [OnePlus 13](https://en.wikipedia.org/wiki/OnePlus_13) (CPH2655, codename `dodge`) on the latest LineageOS nightly with MindTheGapps, OrangeFox and KernelSU-Next.
 
 ## Contents
 

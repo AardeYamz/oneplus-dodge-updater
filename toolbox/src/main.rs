@@ -1,4 +1,4 @@
-// Dodge Toolbox: front end for the manual flash instructions in README.md / scripts/update-lineage.ps1.
+// Dodge Toolbox: front end for the manual flash instructions in docs/reference.md / scripts/update-lineage.ps1.
 // ui/ is the page (rendered by the system WebView); src/toolbox.rs owns everything that touches the phone, the network or the disk.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
