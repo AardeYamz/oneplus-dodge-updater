@@ -64,7 +64,7 @@ flowchart LR
 
 ### `scripts\update-lineage.ps1`
 
-Scripted version of the [manual flash instructions](#manual-flash-instructions). Steps that need a tap on the phone pause until you press Enter; the update and each wipe-risk step ask first.
+Scripted version of the [manual flash instructions](#manual-flash-instructions). Steps that need a tap on the phone pause until you press Enter; it asks once, before anything is downloaded or flashed.
 
 | Parameter | Default | What it does |
 | --- | --- | --- |
@@ -92,7 +92,7 @@ Builds the portable Toolbox exe.
 | `-Fast` | off | Quicker build (no LTO), slightly larger exe. For local testing. |
 | `-BumpTheme` | off | Pin the newest published theme version in `toolbox\theme.json` first. |
 
-It runs `cargo build` (output in `%LOCALAPPDATA%\dodge-toolbox-target`; the build fetches the theme first) and copies `Dodge Toolbox <version>.exe` to the repo root. Keep the exe there so it finds `artifacts\` and `scripts\`.
+It runs `cargo build` (output in `%LOCALAPPDATA%\dodge-toolbox-target`; the build fetches the theme first) and copies `Dodge Toolbox <version>.exe` to the repo root. Keep the exe there so it finds `scripts\` and `.env` (downloads come from `DODGE_DATA_ROOT`).
 
 ### Configuration
 
