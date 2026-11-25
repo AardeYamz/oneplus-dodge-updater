@@ -1,4 +1,4 @@
-# Read by actionlint (.github/workflows/actionlint.yml).
+# Read by actionlint (the shared actionlint in .github/workflows/ci.yml).
 self-hosted-runner:
   # The templates default to ubuntu-26.04, which actionlint's built-in label list does not know yet.
   labels:
