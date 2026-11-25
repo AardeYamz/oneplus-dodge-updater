@@ -4,7 +4,7 @@
   --bg: var(--md-sys-color-surface); --panel: var(--md-sys-color-surface-container); --text: var(--md-sys-color-on-surface);
   --muted: var(--md-sys-color-on-surface-variant); --line: var(--md-sys-color-outline-variant); --accent: var(--md-sys-color-primary);
   --on-accent: var(--md-sys-color-on-primary);
-  --warn: #f2a65a; --err: #ff7a59; --ok: #4fd18b; --logbg: var(--md-sys-color-surface-container-lowest); --logtext: var(--md-sys-color-on-surface);
+  --warn: #f2a65a; --err: #ff7a59; --ok: #4fd18b; --logbg: var(--md-sys-color-surface); --logtext: var(--md-sys-color-on-surface);
 }
 :root[data-theme="light"] { --warn: #b54708; --err: #c4320a; --ok: #12805c; }
 * { box-sizing: border-box; }
