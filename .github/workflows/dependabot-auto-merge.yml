@@ -1,0 +1,21 @@
+name: Dependabot auto-merge
+
+# Merges Dependabot's patch and minor updates (and dev-only majors) once this repo's "Build" workflow passes, with the shared
+# workflow in AardeYamz/workflows. Production major bumps are left for review. pull_request_target is required so the job gets a
+# write token on a Dependabot PR; it is safe because nothing from the PR head is checked out or run.
+on: # zizmor: ignore[dangerous-triggers]
+  pull_request_target:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  auto-merge:
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: AardeYamz/workflows/.github/workflows/dependabot-auto-merge.yml@49a0ea9f9b0eb2279db8d0c111e53b8787c4149d # v1.0.4
+    with:
+      required-workflow: Build
