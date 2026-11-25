@@ -10,7 +10,7 @@ publish = false
 tauri = { version = "2", features = ["custom-protocol"] }
 serde_json = "1"
 sha2 = "0.10"
-zip = { version = "2", default-features = false, features = ["deflate"] }
+zip = { version = "9", default-features = false, features = ["deflate"] }
 rfd = { version = "0.15", default-features = false, features = ["gtk3"] }
 
 # HTTPS through the OS TLS stack (SChannel) on Windows: system certificates, no bundled crypto.
