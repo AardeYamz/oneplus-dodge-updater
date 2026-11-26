@@ -17,7 +17,7 @@ const STEPS = [
 ];
 
 const SETTINGS = [
-  ['dataRoot', 'Data folder (holds artifacts\\ and platform-tools\\; X: drive)', true],
+  ['dataRoot', 'Data folder (holds artifacts\\ and platform-tools\\)', true],
   ['root', 'App folder (holds scripts\\)', true],
   ['platformTools', 'platform-tools folder (adb.exe / fastboot.exe)', true],
   ['gapps', 'MindTheGapps zip', false],
@@ -166,7 +166,7 @@ async function refresh() {
   $('state').className = 'pill ' + s.state;
   const bits = [s.version, s.kernel && 'kernel ' + s.kernel, s.slot && 'slot ' + s.slot, s.adbVersion].filter(Boolean);
   $('info').textContent = bits.join(' · ');
-  if (/1\.0\.39/.test(s.adbVersion)) $('info').textContent += ' ⚠ old Essential ADB: set the platform-tools folder in Settings';
+  if (/1\.0\.39/.test(s.adbVersion)) $('info').textContent += ' ⚠ old adb: set the platform-tools folder in Settings';
 }
 
 async function renderSettings() {

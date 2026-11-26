@@ -1,6 +1,6 @@
 # Audit findings, 2026-11-09
 
-Audit of `main` at `944f692`. This file is a work list for a later fixing agent. Nothing here has been fixed. Each item lists the location, the problem, the fix and how to verify it. Check the box when the fix is merged and verified.
+Audit of `main` at `944f692`. This file is a work list for a later fixing agent. Each item lists the location, the problem, the fix and how to verify it, as found at that commit. Current status is tracked in GitHub issues: H1 to H5 are fixed (#15 to #19, closed by #29); M1 to M7 (#20 to #26) and L1 to L13 (#27) were open on 2026-11-26.
 
 Scope read: `README.md`, `.claude/skills/update-lineageos/SKILL.md`, `.github/workflows/build.yml`, `scripts/*.ps1`, all of `toolbox/src/`, `toolbox/build.rs`, `toolbox/Cargo.toml`, `toolbox/ui/`, `toolbox/tauri.conf.json`. Open PRs: none (all 13 are merged). No existing findings or TODO docs in the repo. No TODO/FIXME/HACK/XXX markers and no secret-like strings in tracked files.
 
@@ -19,7 +19,7 @@ Verification run: `toolbox/src/parse.rs` unit tests compiled and run standalone 
 
 ### H1. Vulnerable `zip` crate version in use for OrangeFox extraction
 
-- [ ] Location: `toolbox/Cargo.toml:13` (`zip = { version = "2", ... }`), `toolbox/Cargo.lock:5080` (locked `2.6.1`), used at `toolbox/src/toolbox.rs:470` (`extract_fox`).
+- [x] Location: `toolbox/Cargo.toml:13` (`zip = { version = "2", ... }`), `toolbox/Cargo.lock:5080` (locked `2.6.1`), used at `toolbox/src/toolbox.rs:470` (`extract_fox`).
 - What is wrong: the lock resolves `zip` to 2.6.1, which is inside three open advisories: GHSA-m665-v7pm-7grj (rated critical by the advisory, "zip cloaking" leading to arbitrary file overwrite, fixed in 9.0.5), GHSA-q7v9-x93c-xqv3 (high, symlink-target handling, fixed in 9.0.0) and GHSA-8hxf-qr8p-62x4 (medium, AES HMAC bypass, fixed in 9.0.0). The latest stable is 9.5.0.
 - Why it matters: `extract_fox` unpacks a user-supplied zip. A malicious or tampered OrangeFox zip could write files outside `fox-extract` on the advisory path. Reaching it requires a bad zip, so the practical severity is lower than the advisory rating, but the fix is cheap.
 - Fix: set `zip = { version = "9", default-features = false, features = ["deflate"] }`, update the call sites to the 9.x API, and run `cargo update -p zip`. Confirm `Cargo.lock` no longer contains 2.x.
@@ -27,7 +27,7 @@ Verification run: `toolbox/src/parse.rs` unit tests compiled and run standalone 
 
 ### H2. Autorun skips every `confirm` prompt
 
-- [ ] Location: `toolbox/ui/renderer.js:113` (`if (!auto && s.confirm && ...)`), `renderer.js:144` (`run(true)`), `renderer.js:133` (the single Start dialog).
+- [x] Location: `toolbox/ui/renderer.js:113` (`if (!auto && s.confirm && ...)`), `renderer.js:144` (`run(true)`), `renderer.js:133` (the single Start dialog).
 - What is wrong: in autorun, `run(true)` skips the per-step `confirm` for `flashLineageRecovery`, `sideloadGapps` (slot-switch check), `flashFox` and `pullAndFlashKsu` (KMI check and flash). Only one Start dialog runs at the beginning, and it lists the flashes but does not ask the slot-switch question.
 - Why it matters: the slot-switch confirmation exists because a stale "sideload" state can come from the old session (see `renderer.js:12` and `SKILL.md`). Autorun can sideload GApps without that check. The README says each wipe-risk step asks first, which autorun does not do.
 - Fix: keep `confirm` in autorun. Show the same dialog before each `confirm` step, or make the Start dialog list each confirmation text. Do not let `auto` bypass `confirm`.
@@ -35,7 +35,7 @@ Verification run: `toolbox/src/parse.rs` unit tests compiled and run standalone 
 
 ### H3. Patched init_boot is chosen by newest mtime, not by this build
 
-- [ ] Location: `toolbox/src/toolbox.rs:540-541` (`ls -t /sdcard/Download/kernelsu_next_patched_*.img`, take the first line), `scripts/update-lineage.ps1:122`.
+- [x] Location: `toolbox/src/toolbox.rs:540-541` (`ls -t /sdcard/Download/kernelsu_next_patched_*.img`, take the first line), `scripts/update-lineage.ps1:122`.
 - What is wrong: the code picks the newest `kernelsu_next_patched_*.img` on the phone. It is not tied to the `init_boot_<date>.img` pushed for this build. An older patched image left in `/sdcard/Download` will be selected. The only check is the KMI string (`vermagic=6.6.`), which an older image from the same kernel line also passes. The image is then flashed to `init_boot` (`toolbox.rs:556`, `update-lineage.ps1:130`).
 - Why it matters: `init_boot` from a different LineageOS build can fail to boot, and the flash is only recoverable through fastboot.
 - Fix: require the candidate to be newer than the push (record `date +%s` or the file mtime before the push and compare), or list the candidates and make the user pick one. Refuse to flash if the candidate was not produced after the push. Keep the vermagic check.
@@ -43,7 +43,7 @@ Verification run: `toolbox/src/parse.rs` unit tests compiled and run standalone 
 
 ### H4. No device identity check before fastboot flash or erase
 
-- [ ] Location: `toolbox/src/toolbox.rs:298-304` (`to_bootloader`), `:491-497` (`flash_lineage_recovery`), `:516-523` (`flash_fox`), `:556` (flash init_boot in `pull_and_flash_ksu`), `:565` (`rollback_root`). `scripts/update-lineage.ps1:64` (preflight), `:97`, `:115`, `:130`.
+- [x] Location: `toolbox/src/toolbox.rs:298-304` (`to_bootloader`), `:491-497` (`flash_lineage_recovery`), `:516-523` (`flash_fox`), `:556` (flash init_boot in `pull_and_flash_ksu`), `:565` (`rollback_root`). `scripts/update-lineage.ps1:64` (preflight), `:97`, `:115`, `:130`.
 - What is wrong: nothing checks that the attached device is `dodge` before flashing. Preflight reads `ro.lineage.version` and the kernel only. `to_bootloader` accepts any fastboot device. Multiple attached devices are not detected. The repo has no `ro.product.device` or `getvar product` check (grep confirms).
 - Why it matters: the flash steps write recovery and init_boot. A different device, or a second phone plugged in, would receive the image.
 - Fix: before the first flash, read `fastboot getvar product` (and/or `adb shell getprop ro.product.device`) and require `dodge`. Refuse when more than one device is listed in `adb devices` or `fastboot devices`. Put the check in one function used by all flash paths, in both the toolbox and the script.
@@ -51,7 +51,7 @@ Verification run: `toolbox/src/parse.rs` unit tests compiled and run standalone 
 
 ### H5. PowerShell script ignores native exit codes on adb and fastboot
 
-- [ ] Location: `scripts/update-lineage.ps1:97-98`, `:100-101`, `:105-106`, `:115-116`, `:130-131`.
+- [x] Location: `scripts/update-lineage.ps1:97-98`, `:100-101`, `:105-106`, `:115-116`, `:130-131`.
 - What is wrong: `$ErrorActionPreference = 'Stop'` does not stop on a non-zero exit from `adb` or `fastboot` (native commands). Only `curl.exe` (line 57) and `cargo` in `build-toolbox.ps1:36` check `$LASTEXITCODE`. A failed `fastboot flash recovery` is followed by `fastboot reboot recovery` and then the sideload prompts.
 - Why it matters: the script goes on after a failed recovery or init_boot flash and tells the user to tap on the phone. It can leave the device in a half-flashed state with no error.
 - Fix: after each `fastboot flash` and `fastboot reboot`, check `$LASTEXITCODE` and throw. For `adb sideload`, use the output (`Total xfer`, `Success`) rather than the exit code, as the comment at line 101 says a non-zero exit is normal at 47%.

@@ -4,7 +4,6 @@
   Cargo builds on the local disk; the finished exe is copied to the repo root, where the updater lives.
 #>
 param(
-    [string]$Store = 'X:\Android Development\Devices\Dodge',
     # Quicker build (no LTO, fewer optimizations), slightly larger exe. For local testing.
     [switch]$Fast,
     # Pin the newest published yl-theme version in toolbox\theme.json before building.
@@ -14,10 +13,9 @@ $ErrorActionPreference = 'Stop'
 
 $root = Split-Path $PSScriptRoot
 $app  = Join-Path $root 'toolbox'
-# Build on the local disk: the target tree is thousands of small files, slow on X:.
+# Build on the local disk: the target tree is thousands of small files, slow on a network or external drive.
 $out  = Join-Path $env:LOCALAPPDATA 'dodge-toolbox-target'
 
-if (-not (Test-Path -LiteralPath $Store)) { throw "Store folder not found: $Store (is X: connected?)" }
 if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) { throw 'cargo not found: install Rust from https://rustup.rs' }
 
 if ($BumpTheme) {

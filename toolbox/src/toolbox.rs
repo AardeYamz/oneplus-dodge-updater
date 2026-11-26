@@ -64,8 +64,8 @@ impl Toolbox {
         let dotenv: Vec<(String, String)> =
             fs::read_to_string(app_root.join(".env")).unwrap_or_default().lines().filter_map(parse::env_line).collect();
         let var = |k: &str| std::env::var(k).ok().or_else(|| dotenv.iter().find(|(n, _)| n == k).map(|(_, v)| v.clone()));
-        // Data root: where artifacts\ and platform-tools\ live (the X: drive). Set DODGE_DATA_ROOT in .env to change it.
-        let data_root = var("DODGE_DATA_ROOT").unwrap_or_else(|| r"X:\Android Development\Devices\Dodge".into());
+        // Data root: where artifacts\ and platform-tools\ live (the app/repo folder unless DODGE_DATA_ROOT is set, e.g. in .env).
+        let data_root = var("DODGE_DATA_ROOT").unwrap_or_else(|| app_root.display().to_string());
         let platform_tools =
             var("DODGE_PLATFORM_TOOLS").unwrap_or_else(|| Path::new(&data_root).join("platform-tools").display().to_string());
         let defaults = json!({
@@ -143,7 +143,7 @@ impl Toolbox {
     }
 
     // --- Processes ---
-    /// Prefer adb/fastboot from the chosen platform-tools folder; the old Essential ADB (1.0.39) on PATH fails on 3 GB sideloads.
+    /// Prefer adb/fastboot from the chosen platform-tools folder; an old adb (1.0.39) on PATH fails on 3 GB sideloads.
     fn tool(&self, name: &str) -> PathBuf {
         let exe = Path::new(&self.s("platformTools")).join(if cfg!(windows) { format!("{name}.exe") } else { name.into() });
         if exe.exists() { exe } else { PathBuf::from(name) }
