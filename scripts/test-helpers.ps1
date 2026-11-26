@@ -67,6 +67,24 @@ Test-Case 'Enter-Bootloader stops on a wrong device before rebooting' { $env:STU
 Test-Case 'sideload with Total xfer counts as done despite exit 1' { $env:STUB_SIDELOAD_OK = '1'; Invoke-Sideload 'rom.zip' }
 Test-Case 'sideload without Total xfer fails' { Invoke-Sideload 'rom.zip' } 'did not finish'
 
+# Downloads, from file:// URLs so no network is needed.
+$src = Join-Path $work 'source.img'; [IO.File]::WriteAllText($src, 'abc')
+$url = [Uri]::new($src, [UriKind]::Absolute).AbsoluteUri   # a bare [uri] cast leaves a Linux path relative
+$good = 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad'   # SHA-256 of "abc"
+$out = Join-Path $work 'out.img'
+function Assert-Gone { if ((Test-Path $out) -or (Test-Path "$out.part")) { throw 'a file was left behind' } }
+Test-Case 'a download with the wrong hash fails and leaves nothing' {
+  try { Get-Download $url $out ('0' * 64) } catch { if ($_.Exception.Message -notmatch 'mismatch') { throw } ; Assert-Gone; return }
+  throw 'no error'
+}
+Test-Case 'a failed transfer leaves nothing' {
+  try { Get-Download "$url.missing" $out $good } catch { if ($_.Exception.Message -notmatch 'failed \(exit') { throw } ; Assert-Gone; return }
+  throw 'no error'
+}
+Test-Case 'a missing hash is refused' { Get-Download $url $out '' } 'No usable SHA-256'
+Test-Case 'a good download is kept' { Get-Download $url $out $good; if ((Get-Content -Raw $out) -ne 'abc') { throw 'wrong content' } }
+Test-Case 'a bad existing file is replaced' { Set-Content $out 'junk'; Get-Download $url $out $good; if ((Get-Content -Raw $out) -ne 'abc') { throw 'not replaced' } }
+
 Remove-Item -Recurse -Force $work -ErrorAction SilentlyContinue
 if ($failed) { Write-Host "$failed test(s) failed"; exit 1 }
 Write-Host 'all passed'

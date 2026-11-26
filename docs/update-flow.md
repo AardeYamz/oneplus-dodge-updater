@@ -39,7 +39,7 @@ flowchart LR
 | Preflight | Checks `adb`/`fastboot` are on `PATH` and an authorized device is connected, and that it is the dodge (checked again before every flash); reads the installed build and kernel. |
 | Pick build | Queries the LineageOS API for the newest nightly (or the date you give). The script stops if the phone is already on it; warns on a major version change. |
 | Confirm | The script asks once, before anything is downloaded or flashed. The Toolbox asks before each reboot or flash. |
-| Download and verify | Fetches the ROM zip, `recovery.img`, `init_boot.img` and `build-manifest.xml`; checks the zip's SHA-256 and the `recovery.img` size. |
+| Download and verify | Fetches the ROM zip, `recovery.img`, `init_boot.img` and `build-manifest.xml`; checks each against the SHA-256 the LineageOS API publishes, and the `recovery.img` size. A file that does not match is removed and downloaded again. |
 | Extract OrangeFox | Unzips OrangeFox's `recovery.img` into `fox-extract` and checks its size. |
 | 1. Lineage recovery + ROM | Flashes LineageOS Recovery, then sideloads the ROM (tap **Apply from ADB** first). |
 | 2. Switch slot + GApps | Reboots to recovery to land on the new slot, then sideloads MindTheGapps. |
@@ -58,7 +58,12 @@ A Windows app that runs the same sequence one button at a time, with a live log.
 2. Click **Refresh** to see the phone's state (`device`, `sideload`, `fastboot`...), build, kernel and slot.
 3. Run the steps top to bottom, or use **Autorun all steps** from any step. Yellow boxes say what to tap on the phone *before* clicking Run. Steps that reboot or flash ask first, including in autorun. Unlike the script, the Toolbox does not stop when the phone is already on the picked build; it says so in the log.
 
-**Cancel** stops the running command, download or wait. **Quick actions** has reboot buttons, a box for one-off `adb`/`fastboot` commands, a button that opens `scripts\update-lineage.ps1` in a PowerShell window, and one that opens the data folder. The command box refuses some wipe commands (`fastboot -w`, `erase userdata`, `format`, `wipe`), but the list is not complete.
+**Cancel** stops the running command, download or wait. **Quick actions** has reboot buttons, a box for one-off `adb`/`fastboot` commands, a button that opens `scripts\update-lineage.ps1` in a PowerShell window, and one that opens the data folder. A failed sideload or command shows as failed.
+
+The command box runs only these, and refuses everything else, including options such as `-s`:
+
+- `adb`: `devices`, `version`, `get-state`, `get-serialno`, `logcat -d`, `reboot`, `shell getprop`, `shell uname`, `push <file> /sdcard/...`, `pull`, `install`, `sideload`
+- `fastboot`: `devices`, `--version`, `getvar`, `reboot`, and `flash recovery|init_boot <image>` after the device check
 
 ## Manual flash
 

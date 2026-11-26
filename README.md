@@ -8,7 +8,7 @@
 Keeps a [OnePlus 13](https://en.wikipedia.org/wiki/OnePlus_13) (CPH2655, `dodge`) on the latest LineageOS nightly with MindTheGapps, OrangeFox and KernelSU-Next, from a PowerShell script or **Dodge Toolbox**, a Windows app with one button per step.
 
 > [!WARNING]
-> Use at your own risk. This flashes firmware, and a wrong or interrupted flash can leave a phone unbootable or erase its data. It is written for one phone (CPH2655), and [open bugs](https://github.com/AardeYamz/oneplus-dodge-updater/issues?q=is%3Aissue+is%3Aopen+label%3Aaudit) include partly unverified downloads and ignored sideload errors. Do not rely on the Toolbox's command box to block wipe commands.
+> Use at your own risk. This flashes firmware, and a wrong or interrupted flash can leave a phone unbootable or erase its data. It is written for one phone (CPH2655), and there are [open bugs](https://github.com/AardeYamz/oneplus-dodge-updater/issues?q=is%3Aissue+is%3Aopen+label%3Aaudit).
 
 ## Architecture
 
@@ -28,7 +28,7 @@ flowchart LR
 ```
 
 - **Flow:** pick the newest build, confirm, download and verify, sideload LineageOS, switch slot, sideload MindTheGapps, boot once, flash OrangeFox, then patch and flash `init_boot` (replaced by every update). Details in [docs/update-flow.md](docs/update-flow.md).
-- **Safety:** flashing is refused unless exactly one device is attached and it is the dodge. A same-major update keeps data; back up before a major jump and check the [upgrade guide](https://wiki.lineageos.org/devices/dodge/upgrade/) for wipes.
+- **Safety:** flashing is refused unless exactly one device is attached and it is the dodge. Downloads are checked against the SHA-256 the LineageOS API publishes. The Toolbox's command box runs only a short list of `adb`/`fastboot` commands, and flashes only `recovery` and `init_boot`. A same-major update keeps data; back up before a major jump and check the [upgrade guide](https://wiki.lineageos.org/devices/dodge/upgrade/) for wipes.
 - **Data root:** downloads and `platform-tools\` live in the repo root (gitignored), or wherever `DODGE_DATA_ROOT` in `.env` points (see `.env.example`).
 - **Theme:** `build.rs` downloads the theme version (from theme.yannislam.org) pinned in `toolbox/theme.json` and checks each SHA-256. `DODGE_SKIP_THEME=1` skips it for offline compile checks.
 

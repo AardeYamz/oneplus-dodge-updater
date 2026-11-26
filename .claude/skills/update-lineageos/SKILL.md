@@ -11,8 +11,8 @@ Source of truth: "Manual flash" in `docs/update-flow.md`. The scripted version i
 
 1. `adb devices -l` must show `device`. If `unauthorized`, ask the user to accept the USB debugging prompt (or revoke authorizations and replug).
 2. Read the current build: `adb shell getprop ro.lineage.version`, and the kernel with `uname -r`.
-3. Latest build: `curl -s https://download.lineageos.org/api/v1/dodge/nightly/x` (the WebFetch tool gets 403; use curl). Fields: `filename`, `url`, `id` (SHA-256), `size`, `datetime`.
-4. Verify the zip's SHA-256 against `id` before flashing.
+3. Latest build: `curl -s https://download.lineageos.org/api/v2/devices/dodge/builds` (the WebFetch tool gets 403; use curl). Each build has `datetime` and `files`, each file with `filename`, `url`, `sha256` and `size`.
+4. Verify the SHA-256 of the zip and of each image against `sha256` before flashing.
 5. **Confirm with the user before flashing** (state the current build, target build and plan). Same-major updates keep data. For a major jump, check the device wiki for a wipe and ask about a backup.
 
 ## Flash sequence (needs the user to tap on the phone)

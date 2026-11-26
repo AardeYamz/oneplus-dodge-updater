@@ -13,8 +13,9 @@
   - Stops if the phone is already on the target build. Warns on a major version change.
   - Asks once, before downloading or flashing. Later flashes do not ask again.
   - Pauses for each step that needs a tap on the phone, until you press Enter.
-  - Skips downloads whose file already exists. Checks the ROM zip against the API's SHA-256, and requires
-    recovery.img (LineageOS and OrangeFox) to be exactly 104857600 bytes.
+  - Checks every downloaded file against the SHA-256 the LineageOS API publishes. Keeps an existing file only if it
+    matches; otherwise removes it and downloads it again.
+  - Requires recovery.img (LineageOS and OrangeFox) to be exactly 104857600 bytes.
   - Flashes a patched init_boot only if it was written after this run pushed the stock one and its vermagic= is
     6.6.x. Saves it as artifacts\images\ksu-patched-init_boot-<date>.img.
   - Stops at the first failed adb or fastboot command.
@@ -92,9 +93,6 @@ function Wait-Boot {
   adb wait-for-device
   while ((adb shell getprop sys.boot_completed 2>$null) -notmatch '1') { Start-Sleep 5 }
 }
-function Get-Download($url, $out) {
-  if (-not (Test-Path $out)) { curl.exe -L --fail -o $out $url; if ($LASTEXITCODE) { throw "Download failed: $url" } }
-}
 
 # --- Preflight ---
 foreach ($t in 'adb', 'fastboot') { if (-not (Get-Command $t -ErrorAction SilentlyContinue)) { throw "$t not on PATH." } }
@@ -106,10 +104,12 @@ Write-Host "Installed: $current  | kernel $kernel"
 Assert-Dodge
 
 # --- Pick the build ---
-$api = Invoke-RestMethod "https://download.lineageos.org/api/v1/$Device/nightly/x"
-$rel = if ($Build) { $api.response | Where-Object { $_.filename -match "-$Build-" } | Select-Object -First 1 }
-       else { $api.response | Sort-Object datetime -Descending | Select-Object -First 1 }
+# The v2 API lists every file of a build with its SHA-256. Assign before piping: Windows PowerShell 5.1 passes the JSON array on as one object.
+$api = Invoke-RestMethod "https://download.lineageos.org/api/v2/devices/$Device/builds"
+$rel = $api | Sort-Object datetime -Descending | ForEach-Object { $_.files } |
+  Where-Object { $_.filename -match '^lineage-.+-signed\.zip$' -and (-not $Build -or $_.filename -match "-$Build-") } | Select-Object -First 1
 if (-not $rel) { throw 'Build not found in the API response.' }
+$files = ($api | Where-Object { $_.files.filename -contains $rel.filename }).files
 $null = $rel.filename -match 'lineage-(\d+)\.(\d+)-(\d{8})'
 $major = $Matches[1]; $date = $Matches[3]
 if ($current -match [regex]::Escape("$($Matches[1]).$($Matches[2])-$date")) { Write-Host 'Already on this build.'; return }
@@ -121,10 +121,11 @@ Confirm-Step 'Proceed with the update?'
 # --- Download and verify ---
 $dir = "$Art\builds\$major-$date"; New-Item -ItemType Directory -Force $dir, "$Art\lineage" | Out-Null
 $zip = "$Art\lineage\$($rel.filename)"
-Get-Download $rel.url $zip
-if ((Get-FileHash $zip -Algorithm SHA256).Hash -ne $rel.id.ToUpper()) { throw 'SHA-256 mismatch. Delete the zip and retry.' }
+Get-Download $rel.url $zip $rel.sha256
 foreach ($img in 'recovery.img', 'init_boot.img', 'build-manifest.xml') {
-  Get-Download "https://mirrorbits.lineageos.org/full/$Device/$date/$img" "$dir\$img"
+  $f = $files | Where-Object { $_.filename -eq $img }
+  if (-not $f) { throw "The API lists no $img for this build." }
+  Get-Download $f.url "$dir\$img" $f.sha256
 }
 if ((Get-Item "$dir\recovery.img").Length -ne 104857600) { throw 'recovery.img size is wrong.' }
 
