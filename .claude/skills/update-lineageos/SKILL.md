@@ -5,7 +5,7 @@ description: Update the OnePlus 13 (CPH2655, codename dodge) to the latest Linea
 
 # Update LineageOS on dodge
 
-Source of truth: the manual flash instructions in `README.md`. The scripted version is `scripts/update-lineage.ps1`.
+Source of truth: "Manual flash" in `docs/update-flow.md`. The scripted version is `scripts/update-lineage.ps1`.
 
 ## Before flashing
 
@@ -17,7 +17,7 @@ Source of truth: the manual flash instructions in `README.md`. The scripted vers
 
 ## Flash sequence (needs the user to tap on the phone)
 
-Use plain `adb`/`fastboot` from `C:\Program Files\platform-tools`. The old Essential ADB (1.0.39) fails on the 3 GB zip, so check `adb --version` if a sideload fails.
+Use the current Android SDK Platform-Tools `adb`/`fastboot`. Old adb (1.0.39) fails on the 3 GB zip, so check `adb --version` if a sideload fails.
 
 1. `adb reboot bootloader`, then `fastboot flash recovery <build>\recovery.img` (LineageOS Recovery, 104857600 bytes), then `fastboot reboot recovery`.
 2. User: Apply update -> Apply from ADB. Wait for `sideload` in `adb devices`, then `adb sideload <lineage zip>`. Stopping at ~47% with `Total xfer: 1.00x` is normal.
@@ -34,12 +34,11 @@ Use plain `adb`/`fastboot` from `C:\Program Files\platform-tools`. The old Essen
 ## Never
 
 - Run `fastboot -w`, `fastboot erase userdata` or "Format data" without the user asking for a wipe.
-- Use the "spoofed" KernelSU manager APK; the kernel module only recognises the original signature.
 - Flash before the user has confirmed.
 
 ## Folder layout
 
-All downloads live under `artifacts\` (gitignored). `artifacts\builds\<major>-<date>\` (e.g. `24-20261027`) holds `recovery.img`, `init_boot.img` and `build-manifest.xml` from `https://mirrorbits.lineageos.org/full/dodge/<date>/`. `artifacts\lineage\` holds the ROM zips, `mindthegapps\` the GApps zips, `orangefox\` the Fox zips, `kernelsu-next\` the manager APKs, `pi-modules\` the Play Integrity modules, `images\` the patched init_boot images. The Play Integrity modules live in `/data` and survive the update. Re-check Play Integrity afterwards.
+All downloads live under `artifacts\` (gitignored). `artifacts\builds\<major>-<date>\` (e.g. `24-20261027`) holds `recovery.img`, `init_boot.img` and `build-manifest.xml` from `https://mirrorbits.lineageos.org/full/dodge/<date>/`. `artifacts\lineage\` holds the ROM zips, `mindthegapps\` the GApps zips, `orangefox\` the Fox zips, `kernelsu-next\` the manager APKs, `images\` the patched init_boot images.
 
 ## Script
 

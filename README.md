@@ -1,236 +1,75 @@
 # oneplus-dodge-updater
 
-Tooling and notes for keeping the [OnePlus 13](https://en.wikipedia.org/wiki/OnePlus_13) (CPH2655, codename `dodge`) on the latest LineageOS nightly with MindTheGapps, OrangeFox and KernelSU-Next.
+[![CI](https://github.com/AardeYamz/oneplus-dodge-updater/actions/workflows/ci.yml/badge.svg)](https://github.com/AardeYamz/oneplus-dodge-updater/actions/workflows/ci.yml)
+[![Build](https://github.com/AardeYamz/oneplus-dodge-updater/actions/workflows/build.yml/badge.svg)](https://github.com/AardeYamz/oneplus-dodge-updater/actions/workflows/build.yml)
+![PowerShell](https://img.shields.io/badge/PowerShell-5391FE?logo=powershell&logoColor=white)
+![Rust](https://img.shields.io/badge/Rust-Tauri-000000?logo=rust&logoColor=white)
 
-## Contents
+Keeps a [OnePlus 13](https://en.wikipedia.org/wiki/OnePlus_13) (CPH2655, `dodge`) on the latest LineageOS nightly with MindTheGapps, OrangeFox and KernelSU-Next, from a PowerShell script or **Dodge Toolbox**, a Windows app with one button per step.
 
-```
-scripts/     update-lineage.ps1 (scripted update), build-toolbox.ps1 (builds the exe)
-toolbox/     Rust (Tauri) app that runs the update steps with a live log
-artifacts/   downloads and flash images (gitignored; keep it on any drive and link it in, see `DODGE_DATA_ROOT`)
-  builds/<major>-<date>/   recovery.img, init_boot.img, build-manifest.xml
-  lineage/ mindthegapps/ orangefox/ kernelsu-next/   zips and APKs
-  fox-extract/             unzipped OrangeFox recovery.img
-  images/                  patched init_boot images, loose images
-  archives/                other downloaded bundles
-platform-tools/             adb / fastboot (gitignored; same data folder, linked in)
-```
+> [!WARNING]
+> Use at your own risk. This flashes firmware, and a wrong or interrupted flash can leave a phone unbootable or erase its data. It is written for one phone (CPH2655), and [open bugs](https://github.com/AardeYamz/oneplus-dodge-updater/issues?q=is%3Aissue+is%3Aopen+label%3Aaudit) include partly unverified downloads and ignored sideload errors. Do not rely on the Toolbox's command box to block wipe commands.
 
-## Quick start
-
-```powershell
-powershell -File scripts\update-lineage.ps1      # scripted update
-cd toolbox; cargo run                             # or the toolbox app, one button per step
-pwsh scripts\build-toolbox.ps1                   # build the portable exe
-```
-
-Prerequisites: Windows, PowerShell, the latest [Android SDK Platform-Tools](https://developer.android.com/tools/releases/platform-tools) (`adb`/`fastboot`) on `PATH`. Old adb versions (such as 1.0.39) can fail on the 3 GB zip. USB debugging must be authorized and the bootloader unlocked. [Rust](https://rustup.rs) (MSVC toolchain) to build the toolbox.
-
-A same-major update keeps data. Back up before a major jump (e.g. 24 -> 25).
-
-LineageOS documentation for this device:
-
-- [Device page (dodge)](https://wiki.lineageos.org/devices/dodge/)
-- [Install guide](https://wiki.lineageos.org/devices/dodge/install/)
-- [Upgrade guide](https://wiki.lineageos.org/devices/dodge/upgrade/) (check it for required wipes on a major jump)
-- [Nightly builds](https://download.lineageos.org/devices/dodge/builds)
-
-## Update flow
+## Architecture
 
 ```mermaid
 flowchart LR
-    S1[Preflight] --> S2[Pick build] --> Q{Already<br/>on it?}
-    Q -- yes --> X[Stop]
-    Q -- no --> S3[Confirm] --> S4[Download<br/>and verify] --> S5[Extract<br/>OrangeFox] --> S6[1. Lineage<br/>recovery + ROM] --> S7[2. Switch slot<br/>+ GApps] --> S8[3. First<br/>boot] --> S9[4. OrangeFox] --> S10[5. Patch<br/>init_boot] --> S11[Flash<br/>and reboot] --> D[Done]
+    api["LineageOS API<br/>and mirrors"] --> data["data root<br/>artifacts/"]
+    subgraph repo["oneplus-dodge-updater"]
+        ps["scripts/<br/>update-lineage.ps1"]
+        app["toolbox/<br/>Tauri app"]
+    end
+    data --> ps
+    data --> app
+    ps --> phone["OnePlus 13<br/>adb / fastboot"]
+    app --> phone
+    theme["yl-theme"] -. "pinned theme" .-> app
+    ci["GitHub Actions<br/>ci.yml, build.yml"] --> repo
 ```
 
-| Step | What happens |
-| --- | --- |
-| Preflight | Checks `adb`/`fastboot` are on `PATH` and an authorized device is connected; reads the installed build and kernel. |
-| Pick build | Queries the LineageOS API for the newest nightly (or `-Build`). Stops if the phone is already on it; warns on a major version change. |
-| Confirm | Asks before anything is downloaded or flashed. |
-| Download and verify | Fetches the ROM zip, `recovery.img`, `init_boot.img` and `build-manifest.xml`; checks the zip's SHA-256 and the `recovery.img` size. |
-| Extract OrangeFox | Unzips OrangeFox's `recovery.img` into `fox-extract` and checks its size. |
-| 1. Lineage recovery + ROM | Flashes LineageOS Recovery, then sideloads the ROM (tap **Apply from ADB** first). |
-| 2. Switch slot + GApps | Reboots to recovery to land on the new slot, then sideloads MindTheGapps. |
-| 3. First boot | Reboots to system once and waits for boot to complete. |
-| 4. OrangeFox | Flashes the OrangeFox recovery (last, since the ROM zip can overwrite the recovery). |
-| 5. Patch init_boot | Pushes the new `init_boot.img`; you patch it in KernelSU-Next with KMI `android15-6.6`; the script pulls it and checks `vermagic=` is 6.6.x. |
-| Flash and reboot | Flashes the patched `init_boot`, reboots, and you confirm the manager says **Working**. |
+- **Flow:** pick the newest build, confirm, download and verify, sideload LineageOS, switch slot, sideload MindTheGapps, boot once, flash OrangeFox, then patch and flash `init_boot` (replaced by every update). Details in [docs/update-flow.md](docs/update-flow.md).
+- **Safety:** flashing is refused unless exactly one device is attached and it is the dodge. A same-major update keeps data; back up before a major jump and check the [upgrade guide](https://wiki.lineageos.org/devices/dodge/upgrade/) for wipes.
+- **Data root:** downloads and `platform-tools\` live in the repo root (gitignored), or wherever `DODGE_DATA_ROOT` in `.env` points (see `.env.example`).
+- **Theme:** `build.rs` downloads the theme version (from theme.yannislam.org) pinned in `toolbox/theme.json` and checks each SHA-256. `DODGE_SKIP_THEME=1` skips it for offline compile checks.
 
-`init_boot` is replaced on every update, so KernelSU-Next is re-patched each time.
+## Layout
 
-## Scripts
+```
+scripts/            update-lineage.ps1, build-toolbox.ps1, shared helpers and their tests
+toolbox/            Tauri app: Rust in src/, page in ui/
+.claude/skills/     Claude skill for running an update
+docs/               update flow, audit findings
+.github/            CI, build and Dependabot config
+```
 
-### `scripts\update-lineage.ps1`
+## Related repos
 
-Scripted version of the [manual flash instructions](#manual-flash-instructions). Steps that need a tap on the phone pause until you press Enter; the update and each wipe-risk step ask first.
+| Repo | Role |
+|---|---|
+| [workflows](https://github.com/AardeYamz/workflows) | shared CI workflows |
 
-| Parameter | Default | What it does |
-| --- | --- | --- |
-| `-Build` | newest nightly | Build date to install (`yyyyMMdd`), matched against the LineageOS API response. |
-| `-DataRoot` | `$env:DODGE_DATA_ROOT`, then `DODGE_DATA_ROOT` in `.env`, then the script's built-in default store folder | Folder holding `artifacts\`. Throws if it does not exist. |
-| `-Device` | `dodge` | LineageOS device codename used for the API and mirror URLs. |
-| `-Gapps` | the pinned zip in `<DataRoot>\artifacts\mindthegapps\` | MindTheGapps zip to sideload. |
-| `-FoxZip` | the pinned zip in `<DataRoot>\artifacts\orangefox\` | OrangeFox zip; `recovery.img` is extracted to `artifacts\fox-extract`. |
-| `-KsuPackage` | `com.rifsxd.ksunext` | KernelSU-Next manager package name shown in the on-phone prompt. |
+## Commands
 
-Behavior:
-
-- Stops if already on the target build; warns on a major version change.
-- Downloads are skipped when the file already exists. The ROM zip is checked against the API SHA-256, and `recovery.img` must be exactly 104857600 bytes (same check for OrangeFox).
-- Patched `init_boot` is saved as `artifacts\images\ksu-patched-init_boot-<date>.img` and rejected unless its `vermagic=` is 6.6.x.
-- Rollback for root: `fastboot flash init_boot artifacts\builds\<major>-<date>\init_boot.img`.
-
-### `scripts\build-toolbox.ps1`
-
-Builds the portable Toolbox exe.
-
-| Parameter | Default | What it does |
-| --- | --- | --- |
-| `-Store` | the same built-in default store folder | Data store; throws if the folder is missing. |
-| `-Fast` | off | Quicker build (no LTO), slightly larger exe. For local testing. |
-| `-BumpTheme` | off | Pin the newest published theme version in `toolbox\theme.json` first. |
-
-It runs `cargo build` (output in `%LOCALAPPDATA%\dodge-toolbox-target`; the build fetches the theme first) and copies `Dodge Toolbox <version>.exe` to the repo root. Keep the exe there so it finds `artifacts\` and `scripts\`.
-
-### Configuration
-
-Copy `.env.example` to `.env` (gitignored). Real environment variables win over the file.
-
-| Variable | What it does |
-| --- | --- |
-| `DODGE_DATA_ROOT` | Where `artifacts\` and `platform-tools\` live. |
-| `DODGE_PLATFORM_TOOLS` | Optional override for the platform-tools folder (default `<DODGE_DATA_ROOT>\platform-tools`). |
-
-## Dodge Toolbox
-
-A Windows app that runs the same sequence one button at a time, with a live log. It is written in Rust with [Tauri](https://tauri.app): the page in `toolbox\ui\` is drawn by the WebView2 runtime that ships with Windows 10/11 instead of a bundled Chromium, so the exe is a few MB instead of ~105 MB and uses less memory. `toolbox\src\` does the phone, network and disk work that `main.js` used to.
+Needs Windows, PowerShell, current [Platform-Tools](https://developer.android.com/tools/releases/platform-tools) on `PATH` (adb 1.0.39 can fail on the ROM sideload), USB debugging and an unlocked bootloader. The Toolbox also needs [Rust](https://rustup.rs) (MSVC).
 
 ```powershell
-cd toolbox
-cargo run
+Copy-Item .env.example .env                             # optional: set DODGE_DATA_ROOT
+powershell -File scripts\update-lineage.ps1             # scripted update; -Build yyyyMMdd for a given nightly
+cd toolbox; cargo run; cd ..                            # Toolbox in dev mode
+pwsh scripts\build-toolbox.ps1                          # portable exe; -Fast, -BumpTheme
+cargo test --manifest-path toolbox/Cargo.toml           # unit tests
+pwsh scripts\test-helpers.ps1                           # script helper tests
 ```
 
-The shared theme (`ui/theme/yl-theme.css`, `ui/theme/yl-theme.js`) is not committed. Every build first runs `build.rs`, which downloads the version pinned in `theme.json` from https://theme.yannislam.org, checks its SHA-256 (needs a network connection the first time) and renders the window/exe icon from the theme's `favicon.svg`. `scripts\build-toolbox.ps1 -BumpTheme` pins the newest version. `DODGE_SKIP_THEME=1` builds without the theme, for offline compile checks only.
+Never run `fastboot -w`, `fastboot erase userdata` or "Format data" unless you mean to wipe the phone.
 
-To build the single portable `.exe`: `cargo build --release` (output `toolbox\target\release\dodge-toolbox.exe`), or use `scripts\build-toolbox.ps1` as above. Settings are kept in `%APPDATA%\Dodge Toolbox\settings.json`, the same file the Electron version used. Set the working folder in Settings if the exe is not in the repo root.
+## Docs
 
-Use:
+- [docs/update-flow.md](docs/update-flow.md): the update step by step, using the Toolbox, flashing by hand and known issues.
+- Script parameters and behaviour: `Get-Help .\scripts\update-lineage.ps1 -Full` (same for `build-toolbox.ps1`).
+- [LineageOS dodge wiki](https://wiki.lineageos.org/devices/dodge/): [install](https://wiki.lineageos.org/devices/dodge/install/), [upgrade](https://wiki.lineageos.org/devices/dodge/upgrade/), [nightlies](https://download.lineageos.org/devices/dodge/builds).
+- [docs/audit-findings-2026-11-09.md](docs/audit-findings-2026-11-09.md): audit work list.
 
-1. Open **Settings** and check the platform-tools folder. The header shows the adb version and warns if it is the known-bad 1.0.39.
-2. Click **Refresh** to see the phone's state (`device`, `sideload`, `fastboot`...), build, kernel and slot.
-3. Run the steps top to bottom. Yellow boxes say what to tap on the phone *before* clicking Run. Steps that reboot or flash ask first.
+## License
 
-**Cancel** stops the running command, download or wait. **Quick actions** has reboot buttons, a box for one-off `adb`/`fastboot` commands, and a button that opens `scripts\update-lineage.ps1` in a PowerShell window. Wipe commands (`fastboot -w`, `erase userdata`, `format`, `wipe`) are refused in the command box.
-
-## Manual flash instructions
-
-These are the steps `update-lineage.ps1` and the toolbox automate. In the examples, `<major>-<date>` is the build folder, e.g. the LineageOS major version and the build date.
-
-Run from the repo root in PowerShell with `platform-tools` linked in. Always put `.\platform-tools\` in front of `adb.exe` and `fastboot.exe`, so an older `adb` elsewhere on `PATH` is not picked up. Get the latest from [Android SDK Platform-Tools](https://developer.android.com/tools/releases/platform-tools).
-
-Files (all builds must match), under `artifacts\`:
-
-- `builds\<major>-<date>\` and `lineage\lineage-<version>-<date>-nightly-dodge-signed.zip`
-- `mindthegapps\MindTheGapps-<version>-arm64-<stamp>.zip` (the version must match the Android version of the LineageOS build)
-- `orangefox\OrangeFox-<version>-dodge.zip` (the newest release for `dodge` from the [OrangeFox download page](https://orangefox.download/device/dodge))
-
-Order: LineageOS, then MindTheGapps, then OrangeFox last. The LineageOS zip can overwrite the recovery, so OrangeFox goes on last.
-
-### 0. Prepare OrangeFox's recovery.img (once)
-
-Download the zip from the [OrangeFox download page for dodge](https://orangefox.download/device/dodge); see the [OrangeFox installation guide](https://wiki.orangefox.tech/en/guides/installing_orangefox) for the general procedure.
-
-Extract into its own folder so it doesn't overwrite LineageOS's `recovery.img`:
-
-```powershell
-Expand-Archive "artifacts\orangefox\OrangeFox-<version>-dodge.zip" -DestinationPath "artifacts\fox-extract" -Force
-(Get-Item "artifacts\fox-extract\recovery.img").Length
-```
-
-The size must print `104857600`. If not, the extraction was cut short; do not flash it.
-
-### 1. Install LineageOS (from LineageOS Recovery)
-
-No wipe if you're upgrading from an earlier LineageOS. Wipe (Factory reset) only when coming from OxygenOS.
-
-On the phone: **Apply update -> Apply from ADB**.
-
-```powershell
-.\platform-tools\adb.exe devices
-.\platform-tools\adb.exe sideload "artifacts\lineage\lineage-<version>-<date>-nightly-dodge-signed.zip"
-```
-
-`devices` must list the phone as `sideload`. Stopping at about 47% with `Total xfer: 1.00x` is normal. Wait for the phone to say it finished.
-
-### 2. Switch slot
-
-Do not reboot to system yet. On the phone: **Advanced -> Reboot to recovery**. This puts you on the slot LineageOS was installed to, so the GApps go to the right place.
-
-### 3. Install MindTheGapps
-
-On the phone: **Apply update -> Apply from ADB**.
-
-```powershell
-.\platform-tools\adb.exe devices
-.\platform-tools\adb.exe sideload "artifacts\mindthegapps\MindTheGapps-<version>-arm64-<stamp>.zip"
-```
-
-When recovery says it can't verify the signature, choose **Yes**. That's expected.
-
-### 4. Boot into the system once
-
-Tap **Reboot system now**. The first boot can take several minutes. Confirm LineageOS and Google apps work before continuing.
-
-### 5. Install OrangeFox (last)
-
-```powershell
-.\platform-tools\adb.exe reboot bootloader
-.\platform-tools\fastboot.exe devices
-.\platform-tools\fastboot.exe flash recovery artifacts\fox-extract\recovery.img
-.\platform-tools\fastboot.exe reboot recovery
-```
-
-This replaces LineageOS Recovery with OrangeFox and keeps your data. If it doesn't land in OrangeFox, use the volume keys in the bootloader menu to pick **Recovery mode**.
-
-To go back to LineageOS Recovery: `.\platform-tools\fastboot.exe flash recovery artifacts\builds\<major>-<date>\recovery.img`
-
-### 6. Install KernelSU-Next (LKM, patch init_boot)
-
-Use the [latest KernelSU-Next release](https://github.com/KernelSU-Next/KernelSU-Next/releases/latest). Needs a GKI kernel. LineageOS must already be installed and booting. The "installation" page on kernelsu-next.github.io is for building into kernel source; it does not apply here.
-
-1. Check the kernel: `.\platform-tools\adb.exe shell uname -r`. This phone reports `6.6.x-4k-...`, so the KMI is **android15-6.6**. If the kernel is not GKI, stop.
-2. Download the manager APK `KernelSU_Next_v<version>_<build>-release.apk` from the release page (saved in `artifacts\kernelsu-next\`).
-3. Install it and push the `init_boot.img` from the same LineageOS build:
-   ```powershell
-   .\platform-tools\adb.exe install "artifacts\kernelsu-next\KernelSU_Next_v<version>_<build>-release.apk"
-   .\platform-tools\adb.exe push "artifacts\builds\<major>-<date>\init_boot.img" /sdcard/Download/
-   ```
-4. In the manager: **Install -> Select and patch a file** -> pick `init_boot.img`.
-   **Choose the KMI manually: `android15-6.6`.** The manager auto-picks by Android version, so on Android 17 it chose `android17-6.18`. That module can't load on a 6.6 kernel, and the manager then says "not installed, click to install".
-5. Pull the patched image (use the filename the manager shows, one per KMI you patch):
-   ```powershell
-   .\platform-tools\adb.exe pull /sdcard/Download/<patched-file>.img artifacts\images\ksu-patched-init_boot.img
-   ```
-   Optional check that the embedded module matches the kernel: search the image for the `vermagic=` string. The right one reads `vermagic=6.6.x-4k...`. A 6.12 or 6.18 value is the wrong KMI.
-6. Flash it:
-   ```powershell
-   .\platform-tools\adb.exe reboot bootloader
-   .\platform-tools\fastboot.exe flash init_boot artifacts\images\ksu-patched-init_boot.img
-   .\platform-tools\fastboot.exe reboot
-   ```
-7. Open the manager. It should show **Working**. The module only needs to match the kernel's KMI, not the exact 6.6.x patch level.
-
-Backup/undo: the original `artifacts\builds\<major>-<date>\init_boot.img` is the backup. To undo, flash it back with `fastboot flash init_boot`. After every LineageOS update, `init_boot` is replaced, so repeat steps 4-6 with the new build's `init_boot.img`.
-
-Result: KernelSU-Next (LKM, android15-6.6) confirmed working. Saved files in `artifacts\kernelsu-next\`: the APK, the working patched image, and the stock backup.
-
-### Known issues
-
-- `fastboot boot artifacts\fox-extract\recovery.img` transferred the image but failed with `usb_read failed ... (31)`. Use `fastboot flash recovery` instead (step 5).
-- Mind the build folder name: use the full `<major>-<date>`, not a truncated date.
-- Don't run `fastboot -w`, `fastboot erase userdata`, or "Format data" in recovery unless you mean to wipe the phone.
-- KernelSU-Next says "not installed" after flashing: the patch used the wrong KMI (auto-picked `android17-6.18`). Re-patch with `android15-6.6` and reflash (step 6).
-- adb has no root on this device (`su` is inaccessible), so KernelSU module installs/config have to be done through the manager app's UI, not adb/Termux commands.
-- If any step errors, stop and note the exact output and what the phone's screen shows.
+[MIT](LICENSE)

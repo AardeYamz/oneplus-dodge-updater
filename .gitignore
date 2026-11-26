@@ -37,9 +37,9 @@ toolbox/ui/theme/
 toolbox/ui/theme/yl-fonts.css
 /toolbox/node_modules
 
-# Junction to X:\...\Dodge\toolbox-dist (see platform-tools)
+# May be a junction to another drive, as may platform-tools/
 toolbox-dist/
 artifacts.local-copy/
 
-# Junctions to the X: drive (Dodge only)
+# Local links to the data drive
 x-drive/
