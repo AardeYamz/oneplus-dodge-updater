@@ -12,6 +12,31 @@ function Invoke-Sideload($file) {
   Write-Host $o
   if ($o -notmatch 'Total xfer') { throw "adb sideload of $file did not finish (no 'Total xfer' line)." }
 }
+# Make $out match the published SHA-256: keep it if it does, otherwise remove it and download it again.
+# The download goes to "$out.part" and is renamed only once the hash matches, so a failed one leaves nothing behind.
+function Get-Download($url, $out, $sha256) {
+  if ("$sha256" -notmatch '^[0-9a-fA-F]{64}$') { throw "No usable SHA-256 for $out. Refusing to download it unchecked." }
+  if (Test-Path -LiteralPath $out) {
+    if ((Get-FileHash -LiteralPath $out -Algorithm SHA256).Hash -eq $sha256) { return }
+    Write-Warning "$out does not match the published SHA-256. Downloading it again."
+    Remove-Item -LiteralPath $out
+  }
+  $part = "$out.part"
+  $curl = if ($IsLinux -or $IsMacOS) { 'curl' } else { 'curl.exe' }   # plain "curl" is an alias in Windows PowerShell
+  try {
+    # Not via Invoke-Native, which would take -o as one of its own parameters. curl writes progress to stderr, which
+    # Windows PowerShell 5.1 turns into a terminating error under Stop when the streams are redirected.
+    $ErrorActionPreference = 'Continue'
+    & $curl -L --fail -o $part $url
+    $code = $LASTEXITCODE
+    $ErrorActionPreference = 'Stop'
+    if ($code -ne 0) { throw "Download of $url failed (exit $code)." }
+    if ((Get-FileHash -LiteralPath $part -Algorithm SHA256).Hash -ne $sha256) { throw "SHA-256 mismatch for $out. The download was removed; retry." }
+    Move-Item -LiteralPath $part $out
+  } finally {
+    if (Test-Path -LiteralPath $part) { Remove-Item -LiteralPath $part }
+  }
+}
 # Refuse to flash unless exactly one device is attached and it is the dodge.
 # The phone never calls itself just "dodge": ro.product.device is the OnePlus codename (the OTA's pre-device list),
 # and the bootloader's "product" is the SoC board, "sun", which other SM8750 phones share.

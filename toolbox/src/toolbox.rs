@@ -1,6 +1,6 @@
 // Everything that touches the phone, the network or the disk (main.js in the Electron version).
 // Steps run on a worker thread; output reaches the UI as `log` and `progress` events.
-use crate::parse;
+use crate::parse::{self, RemoteFile, Release};
 use serde_json::{json, Map, Value};
 use sha2::{Digest, Sha256};
 use std::{
@@ -23,8 +23,7 @@ fn err<E: std::fmt::Display>(e: E) -> String {
 }
 
 const RECOVERY_SIZE: u64 = 104_857_600;
-const API: &str = "https://download.lineageos.org/api/v1";
-const MIRROR: &str = "https://mirrorbits.lineageos.org/full";
+const API: &str = "https://download.lineageos.org/api/v2/devices";
 
 /// Exit code (None when the process was killed or could not report one) and all of its output.
 pub struct Out {
@@ -34,8 +33,7 @@ pub struct Out {
 
 /// The build picked in step 1, shared by the later steps.
 struct Target {
-    rel: Value,
-    major: String,
+    release: Release,
     date: String,
     dir: PathBuf,
     zip: PathBuf,
@@ -328,40 +326,34 @@ impl Toolbox {
     }
 
     // --- Downloads ---
-    fn download(&self, url: &str, out: &Path, label: &str) -> R<()> {
+    /// Make `out` match the published SHA-256: keep it if it does, otherwise remove it and download it again.
+    fn download(&self, f: &RemoteFile, out: &Path) -> R<()> {
         if out.exists() {
-            self.log(&format!("Already have {}", file_name(out)), "info");
-            return Ok(());
+            self.log(&format!("Checking {}...", f.filename), "info");
+            if self.sha256(out)? == f.sha256 {
+                self.log(&format!("Already have {} (SHA-256 OK)", f.filename), "ok");
+                return Ok(());
+            }
+            self.log(&format!("{} does not match the published SHA-256. Removing it.", f.filename), "err");
+            fs::remove_file(out).map_err(err)?;
         }
-        self.log(&format!("Downloading {url}"), "info");
-        let res = self.http.get(url).call().map_err(|e| match e {
-            ureq::Error::Status(code, _) => format!("Download failed ({code}): {url}"),
+        self.log(&format!("Downloading {}", f.url), "info");
+        let res = self.http.get(&f.url).call().map_err(|e| match e {
+            ureq::Error::Status(code, _) => format!("Download failed ({code}): {}", f.url),
             e => e.to_string(),
         })?;
-        let total: u64 = res.header("content-length").and_then(|v| v.parse().ok()).unwrap_or(0);
-        let tmp = PathBuf::from(format!("{}.part", out.display()));
-        let mut file = BufWriter::with_capacity(1 << 20, fs::File::create(&tmp).map_err(err)?);
-        let mut body = res.into_reader();
-        let mut buf = vec![0u8; 1 << 16];
-        let (mut done, mut last) = (0u64, Instant::now() - Duration::from_secs(1));
-        loop {
+        let mut last = Instant::now() - Duration::from_secs(1);
+        save_verified(res.into_reader(), out, &f.sha256, |done| {
             self.check_cancel()?;
-            let n = body.read(&mut buf).map_err(err)?;
-            if n == 0 {
-                break;
-            }
-            file.write_all(&buf[..n]).map_err(err)?;
-            done += n as u64;
             if last.elapsed() >= Duration::from_millis(250) {
                 // keep IPC traffic down on multi-GB files
                 last = Instant::now();
-                self.progress(json!({ "label": label, "done": done, "total": total }));
+                self.progress(json!({ "label": f.filename, "done": done, "total": f.size }));
             }
-        }
-        file.flush().map_err(err)?;
-        drop(file);
-        fs::rename(&tmp, out).map_err(err)?;
+            Ok(())
+        })?;
         self.progress(Value::Null);
+        self.log(&format!("{} SHA-256 OK", f.filename), "ok");
         Ok(())
     }
 
@@ -376,31 +368,39 @@ impl Toolbox {
                 n => h.update(&buf[..n]),
             }
         }
-        Ok(h.finalize().iter().map(|b| format!("{b:02x}")).collect())
+        Ok(hex(h))
+    }
+
+    /// Path of a downloaded build image, re-checked against its published SHA-256 right before it is used.
+    fn verified_image(&self, name: &str) -> R<PathBuf> {
+        let (path, want) = self.need_target(|t| {
+            let want = t.release.images.iter().find(|i| i.filename == name).map(|i| i.sha256.clone());
+            (t.dir.join(name), want)
+        })?;
+        if !path.is_file() {
+            return Err(format!("Missing {}. Run \"Download and verify\" first.", path.display()));
+        }
+        if Some(self.sha256(&path)?) != want {
+            return Err(format!("{name} does not match the published SHA-256. Run \"Download and verify\" again."));
+        }
+        Ok(path)
     }
 
     // --- Build selection ---
     fn latest(&self, build: &str) -> R<Value> {
-        let url = format!("{API}/{}/nightly/x", self.s("device"));
+        let url = format!("{API}/{}/builds", self.s("device"));
         let api: Value = serde_json::from_reader(self.http.get(&url).call().map_err(err)?.into_reader()).map_err(err)?;
-        let mut list = api["response"].as_array().cloned().unwrap_or_default();
-        list.sort_by(|a, b| b["datetime"].as_f64().unwrap_or(0.0).total_cmp(&a["datetime"].as_f64().unwrap_or(0.0)));
-        let needle = format!("-{build}-");
-        let rel = list
-            .into_iter()
-            .find(|r| build.is_empty() || r["filename"].as_str().is_some_and(|f| f.contains(&needle)))
-            .ok_or("Build not found in the API response.")?;
-        let filename = rel["filename"].as_str().unwrap_or_default().to_string();
+        let release = parse::pick_release(&api, build)?;
+        let filename = release.rom.filename.clone();
         let (major, date) = parse::lineage_version(&filename).ok_or("Unexpected build filename in the API response.")?;
+        let r = json!({ "filename": filename, "size": release.rom.size, "major": major });
         let t = Target {
             dir: self.artifact(&["builds", &format!("{major}-{date}")]),
             zip: self.artifact(&["lineage", &filename]),
-            rel: rel.clone(),
+            release,
             pushed_at: None,
-            major,
             date,
         };
-        let r = json!({ "filename": filename, "size": rel["size"], "major": t.major });
         *self.target.lock().unwrap() = Some(t);
         Ok(r)
     }
@@ -464,20 +464,12 @@ impl Toolbox {
     }
 
     fn step_download(&self) -> R<&'static str> {
-        let (url, id, filename, dir, zip, date) = self.need_target(|t| {
-            let s = |k: &str| t.rel[k].as_str().unwrap_or_default().to_string();
-            (s("url"), s("id"), s("filename"), t.dir.clone(), t.zip.clone(), t.date.clone())
-        })?;
+        let (release, dir, zip) = self.need_target(|t| (t.release.clone(), t.dir.clone(), t.zip.clone()))?;
         fs::create_dir_all(&dir).map_err(err)?;
         fs::create_dir_all(zip.parent().unwrap()).map_err(err)?;
-        self.download(&url, &zip, &filename)?;
-        self.log("Checking SHA-256...", "info");
-        if self.sha256(&zip)? != id.to_lowercase() {
-            return Err("SHA-256 mismatch. Delete the zip and retry.".into());
-        }
-        self.log("SHA-256 OK", "ok");
-        for img in ["recovery.img", "init_boot.img", "build-manifest.xml"] {
-            self.download(&format!("{MIRROR}/{}/{date}/{img}", self.s("device")), &dir.join(img), img)?;
+        self.download(&release.rom, &zip)?;
+        for img in &release.images {
+            self.download(img, &dir.join(&img.filename))?;
         }
         if !size_is(&dir.join("recovery.img"), RECOVERY_SIZE) {
             return Err("recovery.img size is wrong.".into());
@@ -500,7 +492,7 @@ impl Toolbox {
     }
 
     fn flash_lineage_recovery(&self) -> R<&'static str> {
-        let img = self.need_target(|t| t.dir.join("recovery.img"))?;
+        let img = self.verified_image("recovery.img")?;
         self.to_bootloader()?;
         must(self.fastboot(&["flash", "recovery", &path_str(&img)], false))?;
         must(self.fastboot(&["reboot", "recovery"], false))?;
@@ -510,7 +502,7 @@ impl Toolbox {
     fn sideload_rom(&self) -> R<&'static str> {
         let zip = self.need_target(|t| t.zip.clone())?;
         self.wait_for("sideload", 180)?;
-        self.adb(&["sideload", &path_str(&zip)], false); // stopping near 47% with "Total xfer: 1.00x" is normal and can exit non-zero
+        self.sideload(&zip)?;
         Ok("Wait for the phone to say it finished. Then on the phone: Advanced -> Reboot to recovery, then Apply update -> Apply from ADB.")
     }
 
@@ -520,8 +512,18 @@ impl Toolbox {
             return Err(format!("Missing {}", zip.display()));
         }
         self.wait_for("sideload", 180)?;
-        self.adb(&["sideload", &path_str(&zip)], false);
+        self.sideload(&zip)?;
         Ok("Answer Yes to the signature warning. Then tap Reboot system now.")
+    }
+
+    /// Stopping near 47% is normal and can exit non-zero, so the output decides (see `parse::sideload_ok`).
+    fn sideload(&self, zip: &Path) -> R<()> {
+        let r = self.adb(&["sideload", &path_str(zip)], false);
+        self.check_cancel()?;
+        if parse::sideload_ok(&r.out) {
+            return Ok(());
+        }
+        Err(format!("Sideload of {} did not finish. Check the phone and the log, then run this step again.", file_name(zip)))
     }
 
     fn flash_fox(&self) -> R<&'static str> {
@@ -537,7 +539,8 @@ impl Toolbox {
     }
 
     fn push_init_boot(&self) -> R<String> {
-        let (img, date) = self.need_target(|t| (t.dir.join("init_boot.img"), t.date.clone()))?;
+        let img = self.verified_image("init_boot.img")?;
+        let date = self.need_target(|t| t.date.clone())?;
         // Phone clock before the push: the patched image must be written after this.
         let now: u64 = must(self.adb(&["shell", "date", "+%s"], true))?.trim().parse().map_err(|_| "Could not read the phone's clock.")?;
         must(self.adb(&["push", &path_str(&img), &format!("/sdcard/Download/init_boot_{date}.img")], false))?;
@@ -575,7 +578,7 @@ impl Toolbox {
     }
 
     fn rollback_root(&self) -> R<&'static str> {
-        let img = self.need_target(|t| t.dir.join("init_boot.img"))?;
+        let img = self.verified_image("init_boot.img")?;
         self.to_bootloader()?;
         must(self.fastboot(&["flash", "init_boot", &path_str(&img)], false))?;
         must(self.fastboot(&["reboot"], false))?;
@@ -588,17 +591,23 @@ impl Toolbox {
         Ok(format!("Rebooting to {to}."))
     }
 
-    /// Free-form adb/fastboot command, with the wipe commands blocked.
+    /// One-off adb/fastboot command, limited to the commands `parse::check_custom` allows.
     fn custom(&self, line: &str) -> R<&'static str> {
         let parts = parse::split_line(line);
         let Some((cmd, args)) = parts.split_first().filter(|(c, _)| *c == "adb" || *c == "fastboot") else {
             return Err("Only adb and fastboot commands are allowed here.".into());
         };
-        if parse::is_wipe(args) {
-            return Err("Wipe commands are blocked in the toolbox.".into());
+        if parse::check_custom(cmd, args)? {
+            self.guard_device()?;
         }
         let args: Vec<&str> = args.iter().map(String::as_str).collect();
-        self.run(&self.tool(cmd), &args, false);
+        let r = self.run(&self.tool(cmd), &args, false);
+        self.check_cancel()?;
+        // `adb sideload` is judged by its output, like the sideload steps.
+        if args.first() == Some(&"sideload") && parse::sideload_ok(&r.out) {
+            return Ok("Done.");
+        }
+        must(r)?;
         Ok("Done.")
     }
 
@@ -620,6 +629,43 @@ impl Toolbox {
         std::os::windows::process::CommandExt::creation_flags(&mut c, 0x0000_0008); // DETACHED_PROCESS
         let _ = c.spawn();
     }
+}
+
+/// Stream `body` into `<out>.part` and rename it to `out` only if its SHA-256 is `sha256`. A short, wrong or
+/// interrupted download leaves nothing behind. `on_chunk` gets the byte count so far and can stop the download.
+fn save_verified(mut body: impl Read, out: &Path, sha256: &str, mut on_chunk: impl FnMut(u64) -> R<()>) -> R<()> {
+    let tmp = PathBuf::from(format!("{}.part", out.display()));
+    let mut write = || -> R<()> {
+        let mut file = BufWriter::with_capacity(1 << 20, fs::File::create(&tmp).map_err(err)?);
+        let mut h = Sha256::new();
+        let mut buf = vec![0u8; 1 << 16];
+        let mut done = 0u64;
+        loop {
+            on_chunk(done)?;
+            let n = body.read(&mut buf).map_err(err)?;
+            if n == 0 {
+                break;
+            }
+            file.write_all(&buf[..n]).map_err(err)?;
+            h.update(&buf[..n]);
+            done += n as u64;
+        }
+        file.flush().map_err(err)?;
+        drop(file);
+        if hex(h) != sha256 {
+            return Err(format!("SHA-256 mismatch after {done} bytes of {}. The download was removed; retry.", file_name(out)));
+        }
+        fs::rename(&tmp, out).map_err(err)
+    };
+    let r = write();
+    if r.is_err() {
+        let _ = fs::remove_file(&tmp);
+    }
+    r
+}
+
+fn hex(h: Sha256) -> String {
+    h.finalize().iter().map(|b| format!("{b:02x}")).collect()
 }
 
 /// Extract `zip` into `dest`, skipping entries whose names would land outside it (`../x`, absolute paths).
@@ -701,6 +747,25 @@ mod tests {
         unzip(&zip_path, &dest, || Ok(())).unwrap();
         assert!(dest.join("recovery.img").exists());
         assert!(!base.join("escaped.txt").exists() && !base.join("escaped2.txt").exists());
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn downloads_are_kept_only_when_the_hash_matches() {
+        let base = std::env::temp_dir().join(format!("dodge-download-test-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&base);
+        fs::create_dir_all(&base).unwrap();
+        let out = base.join("init_boot.img");
+        let part = base.join("init_boot.img.part");
+        // SHA-256 of "abc"
+        let abc = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+        assert!(save_verified(&b"ab"[..], &out, abc, |_| Ok(())).unwrap_err().contains("mismatch")); // cut short
+        assert!(!out.exists() && !part.exists());
+        assert!(save_verified(&b"abc"[..], &out, abc, |_| Err("Cancelled.".into())).is_err());
+        assert!(!out.exists() && !part.exists());
+        save_verified(&b"abc"[..], &out, abc, |_| Ok(())).unwrap();
+        assert_eq!(fs::read(&out).unwrap(), b"abc");
+        assert!(!part.exists());
         let _ = fs::remove_dir_all(&base);
     }
 }

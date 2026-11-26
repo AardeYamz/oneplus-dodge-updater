@@ -5,7 +5,7 @@ const tb = window.toolbox;
 // Mirrors scripts/update-lineage.ps1 / the "Manual flash" steps in README.md. `tap` is shown before running; `confirm` asks first; `pause` stops the autorun for a prompt before the step.
 const STEPS = [
   { id: 'pickBuild', title: 'Pick the build', desc: 'Asks the LineageOS API for the newest nightly (or the date you type).', input: 'Build date yyyyMMdd (blank = newest)' },
-  { id: 'download', title: 'Download and verify', desc: 'ROM zip (SHA-256 checked), recovery.img, init_boot.img and build-manifest.xml. Skips files you already have.' },
+  { id: 'download', title: 'Download and verify', desc: 'ROM zip, recovery.img, init_boot.img and build-manifest.xml, each SHA-256 checked. Keeps files you already have if they match.' },
   { id: 'extractFox', title: 'Extract OrangeFox', desc: 'Unzips the OrangeFox zip to artifacts\\fox-extract\\ and checks recovery.img is 104857600 bytes.' },
   { id: 'flashLineageRecovery', title: 'Flash LineageOS Recovery', desc: 'adb reboot bootloader → fastboot flash recovery → reboot to recovery.', confirm: 'Reboot to the bootloader and flash LineageOS Recovery?' },
   { id: 'sideloadRom', title: 'Sideload LineageOS', desc: 'Stopping near 47% with "Total xfer: 1.00x" is normal.', tap: 'On the phone: Apply update → Apply from ADB.' },
