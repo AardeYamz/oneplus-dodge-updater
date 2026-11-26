@@ -109,8 +109,8 @@ function renderSteps() {
     result.className = 'result';
     li.append(result);
 
-    const run = async (auto) => {
-      if (!auto && s.confirm && !(await ask(s.title, s.confirm))) return false;
+    const run = async () => {
+      if (s.confirm && !(await ask(s.title, s.confirm))) return false;
       const r = await call(s.id, input ? { build: input.value.trim() } : {}, li);
       if (!r) return false;
       if (!r.ok) { result.textContent = '✖ ' + r.error; return false; }
@@ -118,19 +118,19 @@ function renderSteps() {
       if (s.id === 'pickBuild') log({ text: result.textContent, kind: r.result.majorChange ? 'err' : 'ok' });
       return true;
     };
-    li.querySelector('button').onclick = () => run(false);
+    li.querySelector('button').onclick = () => run();
     runners.push({ s, li, run });
     $('steps').append(li);
   }
 }
 
-// Chains the steps from the chosen one. Phone taps and the reboot/flash prompts are asked once per step; Cancel in a prompt, a failed step or the Cancel button stops the run.
+// Chains the steps from the chosen one. Phone taps and every `confirm` prompt (reboot, flash, slot switch) are asked at each step, autorun or not; Cancel in a prompt, a failed step or the Cancel button stops the run.
 async function autorun() {
   if (busy) return;
   const from = Number($('from').value);
   const todo = runners.slice(from);
   const flashes = todo.filter((r) => r.s.confirm).map((r) => '• ' + r.s.title).join('\n');
-  if (!(await ask('Autorun', `Run ${todo.length} steps from "${todo[0].s.title}" to the end?\n\nThis reboots the phone and flashes:\n${flashes}\n\nYou'll be asked to confirm the phone taps before each step that needs them.`, { ok: 'Start' }))) return;
+  if (!(await ask('Autorun', `Run ${todo.length} steps from "${todo[0].s.title}" to the end?\n\nThis reboots the phone and flashes:\n${flashes}\n\nYou'll be asked to confirm the phone taps and each flash or slot-switch question before its step.`, { ok: 'Start' }))) return;
   log({ text: '--- Autorun started ---', kind: 'info' });
   for (const { s, li, run } of todo) {
     if (s.tap && !(await ask(s.title, `📱 ${s.tap}\n\nOK when the phone is ready, Cancel to stop the autorun.`))) {
@@ -141,7 +141,7 @@ async function autorun() {
       log({ text: `Autorun stopped before "${s.title}".`, kind: 'err' });
       return;
     }
-    if (!(await run(true))) {
+    if (!(await run())) {
       log({ text: `Autorun stopped at "${s.title}".`, kind: 'err' });
       return;
     }

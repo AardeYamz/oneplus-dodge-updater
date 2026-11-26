@@ -39,6 +39,7 @@ struct Target {
     date: String,
     dir: PathBuf,
     zip: PathBuf,
+    pushed_at: Option<u64>, // phone clock (epoch seconds) when init_boot was pushed; patched images must be newer
 }
 
 pub struct Toolbox {
@@ -295,10 +296,33 @@ impl Toolbox {
         self.adb(&["shell", "getprop", name], true).out.trim().to_string()
     }
 
+    /// Refuse to continue unless exactly one device is attached and it is a `dodge`. Every flash path goes through
+    /// `to_bootloader`, which calls this before it reboots the phone and again once it is in fastboot.
+    fn guard_device(&self) -> R<()> {
+        let fastboot = self.device_state() == "fastboot";
+        let list = if fastboot { self.fastboot(&["devices"], true) } else { self.adb(&["devices"], true) };
+        let n = parse::device_count(&list.out);
+        if n != 1 {
+            return Err(format!("Expected exactly one attached device, found {n}. Unplug the others and retry."));
+        }
+        let product = if fastboot {
+            parse::fastboot_product(&self.fastboot(&["getvar", "product"], true).out)
+        } else {
+            Some(self.prop("ro.product.device")).filter(|p| !p.is_empty())
+        };
+        match product {
+            Some(p) if parse::is_dodge(&p, fastboot) => Ok(()),
+            Some(p) => Err(format!("Attached device is '{p}', not dodge. Refusing to flash.")),
+            None => Err("Could not read the device model. Refusing to flash (expected dodge).".into()),
+        }
+    }
+
     fn to_bootloader(&self) -> R<()> {
+        self.guard_device()?;
         if self.device_state() != "fastboot" {
             must(self.adb(&["reboot", "bootloader"], false))?;
             self.wait_for("fastboot", 60)?;
+            self.guard_device()?;
         }
         Ok(())
     }
@@ -372,6 +396,7 @@ impl Toolbox {
             dir: self.artifact(&["builds", &format!("{major}-{date}")]),
             zip: self.artifact(&["lineage", &filename]),
             rel: rel.clone(),
+            pushed_at: None,
             major,
             date,
         };
@@ -467,21 +492,7 @@ impl Toolbox {
         }
         let dest = self.artifact(&["fox-extract"]);
         self.log(&format!("> extract {} -> {}", zip.display(), dest.display()), "cmd");
-        let mut a = zip::ZipArchive::new(fs::File::open(&zip).map_err(err)?).map_err(err)?;
-        for i in 0..a.len() {
-            self.check_cancel()?;
-            let mut e = a.by_index(i).map_err(err)?;
-            let Some(rel) = e.enclosed_name() else { continue };
-            let p = dest.join(rel);
-            if e.is_dir() {
-                fs::create_dir_all(&p).map_err(err)?;
-                continue;
-            }
-            fs::create_dir_all(p.parent().unwrap()).map_err(err)?;
-            let mut o = BufWriter::new(fs::File::create(&p).map_err(err)?);
-            std::io::copy(&mut e, &mut o).map_err(err)?;
-            o.flush().map_err(err)?;
-        }
+        unzip(&zip, &dest, || self.check_cancel())?;
         if !size_is(&dest.join("recovery.img"), RECOVERY_SIZE) {
             return Err("OrangeFox recovery.img is truncated. Do not flash it.".into());
         }
@@ -527,7 +538,12 @@ impl Toolbox {
 
     fn push_init_boot(&self) -> R<String> {
         let (img, date) = self.need_target(|t| (t.dir.join("init_boot.img"), t.date.clone()))?;
+        // Phone clock before the push: the patched image must be written after this.
+        let now: u64 = must(self.adb(&["shell", "date", "+%s"], true))?.trim().parse().map_err(|_| "Could not read the phone's clock.")?;
         must(self.adb(&["push", &path_str(&img), &format!("/sdcard/Download/init_boot_{date}.img")], false))?;
+        if let Some(t) = self.target.lock().unwrap().as_mut() {
+            t.pushed_at = Some(now);
+        }
         let kernel = self.adb(&["shell", "uname", "-r"], true).out.trim().to_string();
         Ok(format!(
             "Kernel {kernel}. In KernelSU-Next: Install -> Select and patch a file -> init_boot_{date}.img, and set the KMI to {} by hand.",
@@ -536,12 +552,11 @@ impl Toolbox {
     }
 
     fn pull_and_flash_ksu(&self) -> R<&'static str> {
-        let date = self.need_target(|t| t.date.clone())?;
-        let ls = must(self.adb(&["shell", "ls -t /sdcard/Download/kernelsu_next_patched_*.img"], true))?;
-        let remote = ls.lines().next().unwrap_or_default().trim().to_string();
-        if remote.is_empty() {
-            return Err("No kernelsu_next_patched_*.img in /sdcard/Download.".into());
-        }
+        let (date, pushed_at) = self.need_target(|t| (t.date.clone(), t.pushed_at))?;
+        let pushed_at = pushed_at.ok_or("Run \"Push init_boot\" first: the patched image must be newer than that push.")?;
+        // `stat` fails when the glob matches nothing; an empty listing is reported by newest_patched.
+        let ls = self.adb(&["shell", "stat -c '%Y %n' /sdcard/Download/kernelsu_next_patched_*.img 2>/dev/null"], true).out;
+        let remote = parse::newest_patched(&ls, pushed_at)?;
         let out = self.artifact(&["images", &format!("ksu-patched-init_boot-{date}.img")]);
         fs::create_dir_all(out.parent().unwrap()).map_err(err)?;
         must(self.adb(&["pull", &remote, &path_str(&out)], false))?;
@@ -607,6 +622,26 @@ impl Toolbox {
     }
 }
 
+/// Extract `zip` into `dest`, skipping entries whose names would land outside it (`../x`, absolute paths).
+fn unzip(zip: &Path, dest: &Path, cancelled: impl Fn() -> R<()>) -> R<()> {
+    let mut a = zip::ZipArchive::new(fs::File::open(zip).map_err(err)?).map_err(err)?;
+    for i in 0..a.len() {
+        cancelled()?;
+        let mut e = a.by_index(i).map_err(err)?;
+        let Some(rel) = e.enclosed_name() else { continue };
+        let p = dest.join(rel);
+        if e.is_dir() {
+            fs::create_dir_all(&p).map_err(err)?;
+            continue;
+        }
+        fs::create_dir_all(p.parent().unwrap()).map_err(err)?;
+        let mut o = BufWriter::new(fs::File::create(&p).map_err(err)?);
+        std::io::copy(&mut e, &mut o).map_err(err)?;
+        o.flush().map_err(err)?;
+    }
+    Ok(())
+}
+
 fn must(r: Out) -> R<String> {
     match r.code {
         Some(0) => Ok(r.out),
@@ -641,4 +676,31 @@ fn settings_paths() -> (PathBuf, Vec<PathBuf>) {
     let main = base.join("Dodge Toolbox").join("settings.json");
     let legacy = base.join("dodge-toolbox").join("settings.json");
     (main.clone(), vec![main, legacy])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unzip_skips_entries_outside_the_destination() {
+        let base = std::env::temp_dir().join(format!("dodge-unzip-test-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&base);
+        let dest = base.join("dest");
+        fs::create_dir_all(&dest).unwrap();
+        let zip_path = base.join("crafted.zip");
+        {
+            let mut w = zip::ZipWriter::new(fs::File::create(&zip_path).unwrap());
+            let opts = zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
+            for name in ["recovery.img", "../escaped.txt", "sub/../../escaped2.txt"] {
+                w.start_file(name, opts).unwrap();
+                w.write_all(b"x").unwrap();
+            }
+            w.finish().unwrap();
+        }
+        unzip(&zip_path, &dest, || Ok(())).unwrap();
+        assert!(dest.join("recovery.img").exists());
+        assert!(!base.join("escaped.txt").exists() && !base.join("escaped2.txt").exists());
+        let _ = fs::remove_dir_all(&base);
+    }
 }

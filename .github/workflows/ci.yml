@@ -1,0 +1,27 @@
+name: CI
+
+# Lint-only entry point: diagram lint (mermaid), actionlint and zizmor, from the shared workflow in AardeYamz/workflows.
+# The Windows/Rust build and tests stay in build.yml. Check names are `ci / <job>`.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  ci:
+    permissions:
+      contents: read
+      pull-requests: read     # lists a PR's changed files
+      security-events: write  # the shared workflow asks for it (SARIF upload), though it is off here
+      actions: read
+    uses: AardeYamz/workflows/.github/workflows/ci.yml@06ed74b2165e1ab9b96ad1337816ff6163337ea3 # v1.2.6
+    with:
+      zizmor-advanced-security: false  # private repo without code scanning

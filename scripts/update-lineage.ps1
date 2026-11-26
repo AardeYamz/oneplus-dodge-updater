@@ -38,6 +38,9 @@ $Art = Join-Path $DataRoot 'artifacts'
 if (-not $Gapps)  { $Gapps  = Join-Path $Art 'mindthegapps\MindTheGapps-17.0.0-arm64-20261006_111038.zip' }
 if (-not $FoxZip) { $FoxZip = Join-Path $Art 'orangefox\OrangeFox-R12.0_2-dodge.zip' }
 
+# adb/fastboot safety helpers (exit codes, device guard, sideload check): tested by scripts/test-helpers.ps1.
+. "$PSScriptRoot\dodge-helpers.ps1"
+
 function Confirm-Step($msg) {
   if ((Read-Host "$msg [y/N]") -ne 'y') { throw 'Stopped by user.' }
 }
@@ -64,6 +67,7 @@ if (-not $state) { throw 'No authorized adb device. Unlock the phone and accept 
 $current = adb shell getprop ro.lineage.version
 $kernel = adb shell uname -r
 Write-Host "Installed: $current  | kernel $kernel"
+Assert-Dodge
 
 # --- Pick the build ---
 $api = Invoke-RestMethod "https://download.lineageos.org/api/v1/$Device/nightly/x"
@@ -93,17 +97,17 @@ Expand-Archive $FoxZip -DestinationPath "$Art\fox-extract" -Force
 if ((Get-Item "$Art\fox-extract\recovery.img").Length -ne 104857600) { throw 'OrangeFox recovery.img is truncated.' }
 
 # --- 1. LineageOS Recovery, then sideload the ROM ---
-adb reboot bootloader; Start-Sleep 12
-fastboot flash recovery "$dir\recovery.img"
-fastboot reboot recovery
+Enter-Bootloader
+Invoke-Native fastboot flash recovery "$dir\recovery.img"
+Invoke-Native fastboot reboot recovery
 Wait-Tap 'On the phone: Apply update -> Apply from ADB'
 Wait-Adb 'sideload'
-adb sideload $zip   # stopping near 47% with "Total xfer: 1.00x" is normal
+Invoke-Sideload $zip   # stopping near 47% with "Total xfer: 1.00x" is normal
 
 # --- 2. Switch slot, then GApps ---
 Wait-Tap 'On the phone: Advanced -> Reboot to recovery, then Apply update -> Apply from ADB'
 Start-Sleep 20; Wait-Adb 'sideload'
-adb sideload $Gapps   # answer Yes to the signature warning
+Invoke-Sideload $Gapps   # answer Yes to the signature warning
 
 # --- 3. Boot once ---
 Wait-Tap 'On the phone: Reboot system now (first boot takes several minutes)'
@@ -111,24 +115,29 @@ Wait-Boot
 Write-Host "Booted: $(adb shell getprop ro.lineage.version)"
 
 # --- 4. OrangeFox last ---
-adb reboot bootloader; Start-Sleep 12
-fastboot flash recovery "$Art\fox-extract\recovery.img"
-fastboot reboot; Wait-Boot
+Enter-Bootloader
+Invoke-Native fastboot flash recovery "$Art\fox-extract\recovery.img"
+Invoke-Native fastboot reboot; Wait-Boot
 
 # --- 5. KernelSU-Next: patch the new init_boot in the manager ---
-adb push "$dir\init_boot.img" "/sdcard/Download/init_boot_$date.img"
+$pushedAt = [int64]"$(adb shell date +%s)".Trim()   # phone clock: the patched image must be written after this
+Invoke-Native adb push "$dir\init_boot.img" "/sdcard/Download/init_boot_$date.img"
 Write-Host "Kernel $(adb shell uname -r) -> KMI android15-6.6 (6.6.x). Set it manually; the manager auto-picks the wrong one."
 Wait-Tap "On the phone: $KsuPackage -> Install -> Select and patch a file -> init_boot_$date.img, KMI android15-6.6"
-$patched = (adb shell "ls -t /sdcard/Download/kernelsu_next_patched_*.img" | Select-Object -First 1).Trim()
+$candidates = @(adb shell "stat -c '%Y %n' /sdcard/Download/kernelsu_next_patched_*.img 2>/dev/null" | ForEach-Object {
+  if ("$_" -match '^(\d+) (.+)$') { [pscustomobject]@{ Time = [int64]$Matches[1]; Path = $Matches[2].Trim() } }
+} | Where-Object { $_.Time -ge $pushedAt } | Sort-Object Time -Descending)
+if (-not $candidates) { throw 'No kernelsu_next_patched_*.img newer than this build''s init_boot push. Patch the pushed init_boot again; older images are never flashed.' }
+$patched = $candidates[0].Path
 $out = "$Art\images\ksu-patched-init_boot-$date.img"
 New-Item -ItemType Directory -Force (Split-Path $out) | Out-Null
-adb pull $patched $out
+Invoke-Native adb pull $patched $out
 $ver = [regex]::Matches([Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($out)), 'vermagic=[^\x00]{0,40}') | Select-Object -First 1 -ExpandProperty Value
 Write-Host $ver
 if ($ver -notmatch 'vermagic=6\.6\.') { throw "Wrong KMI in the patched image ($ver). Re-patch with android15-6.6." }
-adb reboot bootloader; Start-Sleep 12
-fastboot flash init_boot $out
-fastboot reboot; Wait-Boot
+Enter-Bootloader
+Invoke-Native fastboot flash init_boot $out
+Invoke-Native fastboot reboot; Wait-Boot
 
 Write-Host "Done: $(adb shell getprop ro.lineage.version). Open the KernelSU-Next manager and confirm it says Working."
 Write-Host "Rollback for root: fastboot flash init_boot $dir\init_boot.img"
