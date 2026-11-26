@@ -112,7 +112,14 @@ pub fn device_count(out: &str) -> usize {
         .count()
 }
 
-/// `fastboot getvar product` prints "product: dodge" (to stderr) followed by "Finished. Total time: ...".
+/// Whether `ro.product.device` (adb) or the bootloader's `product` (fastboot) belongs to a OnePlus 13. The phone
+/// reports its OnePlus codename (the OTA's pre-device list) over adb, and the SoC board "sun" in the bootloader,
+/// which other SM8750 phones share.
+pub fn is_dodge(product: &str, fastboot: bool) -> bool {
+    matches!(product, "dodge" | "OP5D55L1" | "OP5D0DL1") || (fastboot && product == "sun")
+}
+
+/// `fastboot getvar product` prints "product: sun" (to stderr) followed by "Finished. Total time: ...".
 pub fn fastboot_product(out: &str) -> Option<String> {
     out.lines().find_map(|l| l.trim().strip_prefix("product:").map(|v| v.trim().to_string())).filter(|v| !v.is_empty())
 }
@@ -180,6 +187,12 @@ mod tests {
         assert_eq!(env_line(r#"DODGE_DATA_ROOT = "X:\Dodge" "#), Some(("DODGE_DATA_ROOT".into(), r"X:\Dodge".into())));
         assert_eq!(env_line("# DODGE_PLATFORM_TOOLS="), None);
         assert_eq!(env_line("bad key=1"), None);
+    }
+
+    #[test]
+    fn identity() {
+        assert!(is_dodge("OP5D55L1", false) && is_dodge("OP5D0DL1", false) && is_dodge("sun", true));
+        assert!(!is_dodge("sun", false) && !is_dodge("pixel", true) && !is_dodge("", true));
     }
 
     #[test]
