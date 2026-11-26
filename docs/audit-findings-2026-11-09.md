@@ -1,6 +1,6 @@
 # Audit findings, 2026-11-09
 
-Audit of `main` at `944f692`. This file is a work list for a later fixing agent. Each item lists the location, the problem, the fix and how to verify it, as found at that commit. Current status is tracked in GitHub issues: H1 to H5 are fixed (#15 to #19, closed by #29); M1 to M7 (#20 to #26) and L1 to L13 (#27) were open on 2026-11-26.
+Audit of `main` at `944f692`. This file is a work list for a later fixing agent. Each item lists the location, the problem, the fix and how to verify it, as found at that commit. Current status is tracked in GitHub issues: H1 to H5 are fixed (#15 to #19, closed by #29) and so are M1 to M4 (#20 to #23); M5 to M7 (#24 to #26) and L1 to L13 (#27) were open on 2026-11-26.
 
 Scope read: `README.md`, `.claude/skills/update-lineageos/SKILL.md`, `.github/workflows/build.yml`, `scripts/*.ps1`, all of `toolbox/src/`, `toolbox/build.rs`, `toolbox/Cargo.toml`, `toolbox/ui/`, `toolbox/tauri.conf.json`. Open PRs: none (all 13 are merged). No existing findings or TODO docs in the repo. No TODO/FIXME/HACK/XXX markers and no secret-like strings in tracked files.
 
@@ -61,28 +61,28 @@ Verification run: `toolbox/src/parse.rs` unit tests compiled and run standalone 
 
 ### M1. Sideload and custom-command exit codes are ignored, and the step reports success
 
-- [ ] Location: `toolbox/src/toolbox.rs:502` (`sideload_rom`), `:512` (`sideload_gapps`), `:586-587` (`custom` runs the command then returns `"Done."` regardless of its result).
+- [x] Location: `toolbox/src/toolbox.rs:502` (`sideload_rom`), `:512` (`sideload_gapps`), `:586-587` (`custom` runs the command then returns `"Done."` regardless of its result).
 - Why it matters: a failed GApps sideload is shown as a green step, and the user taps through to the next prompt. A failed custom `fastboot flash` says "Done.".
 - Fix: keep the exit code for custom commands and return an error on non-zero. For sideloads, classify the output: accept `Total xfer` with `Success` or with the known 47% stop, and error otherwise.
 - Verify: `custom` with a command that exits non-zero must return `ok: false`. Test the sideload output classifier with sample outputs.
 
 ### M2. Downloads are not verified for init_boot, recovery and manifest, and truncated transfers are accepted
 
-- [ ] Location: `toolbox/src/toolbox.rs:317-339` (no check that bytes read equals `Content-Length`), `:453-459` (only `recovery.img` size is checked; `init_boot.img` and `build-manifest.xml` have no check), `:307-311` (existing file is reused without any check). `scripts/update-lineage.ps1:56-58`, `:84-89`.
+- [x] Location: `toolbox/src/toolbox.rs:317-339` (no check that bytes read equals `Content-Length`), `:453-459` (only `recovery.img` size is checked; `init_boot.img` and `build-manifest.xml` have no check), `:307-311` (existing file is reused without any check). `scripts/update-lineage.ps1:56-58`, `:84-89`.
 - What is wrong: `init_boot.img` is pushed for patching and flashed on rollback (`toolbox.rs:565`) but is never hashed. A connection that closes early is treated as complete. The PowerShell `Get-Download` writes straight to the final path, so a failed curl leaves a partial file that the next run accepts.
 - Fix: compare the bytes read with `Content-Length` when it is present and remove the partial file on error. Check each image against a published checksum if the LineageOS mirror provides one (not verified in this audit: check the mirror listing first). Otherwise at least check the size against the mirror's listing. Write the PowerShell download to a `.part` file and rename it, as the toolbox already does.
 - Verify: with a server that closes early, the download must fail and leave no final file.
 
 ### M3. A failed ROM zip is never deleted, so retries keep failing
 
-- [ ] Location: `toolbox/src/toolbox.rs:448-452` (hash mismatch returns "Delete the zip and retry"), `:308` (existing file skips download). `scripts/update-lineage.ps1:84-85`.
+- [x] Location: `toolbox/src/toolbox.rs:448-452` (hash mismatch returns "Delete the zip and retry"), `:308` (existing file skips download). `scripts/update-lineage.ps1:84-85`.
 - Why it matters: after one bad download, every retry reuses the bad zip, and the user has to delete it by hand. The message tells them to, but the tool does not.
 - Fix: on hash mismatch, delete the zip and return an error that says it was removed.
 - Verify: a zip with a wrong hash is removed after a failed step, and the next run downloads it again.
 
 ### M4. Custom-command wipe blocklist misses `flash userdata` and `flash metadata`
 
-- [ ] Location: `toolbox/src/parse.rs:72-76` (`is_wipe`), used at `toolbox/src/toolbox.rs:582`.
+- [x] Location: `toolbox/src/parse.rs:72-76` (`is_wipe`), used at `toolbox/src/toolbox.rs:582`.
 - What is wrong: the blocklist matches `-w`, `erase userdata`, `format` and `wipe`. Probed directly: `flash userdata userdata.img` and `flash metadata metadata.img` return `blocked=false`. Flashing a userdata image wipes data, and a metadata flash can break encryption keys. The README (line 125) lists the blocked commands as if they were complete.
 - Fix: switch to an allowlist of read-only and reboot commands for the box, or block `flash` of `userdata`, `metadata`, `cache` and `super`. Update the README sentence.
 - Verify: add cases to the `command_line` test in `parse.rs`: `flash userdata x.img`, `flash metadata x.img`, `flash super x.img` must all be blocked.
