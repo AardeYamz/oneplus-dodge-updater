@@ -1,6 +1,6 @@
 name: CI
 
-# Lint and scan entry point: diagram lint (mermaid), actionlint, zizmor and CodeQL, from the shared workflow in AardeYamz/workflows.
+# Lint and scan entry point: diagram lint (mermaid), actionlint, zizmor, CodeQL and dependency review, from the shared workflow in AardeYamz/workflows.
 # The Windows/Rust build and tests stay in build.yml. Check names are `ci / <job>`.
 on:
   push:
@@ -26,3 +26,5 @@ jobs:
     with:
       codeql: true
       codeql-languages: actions,javascript-typescript,rust
+      dependency-review: true
+      dependency-review-severity: high
