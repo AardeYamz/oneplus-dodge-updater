@@ -1,12 +1,34 @@
 <#
 .SYNOPSIS
-  Builds the Dodge Toolbox exe (Rust + Tauri, uses the WebView2 runtime that ships with Windows 10/11).
-  Cargo builds on the local disk; the finished exe is copied to the repo root, where the updater lives.
+  Builds the portable Dodge Toolbox exe.
+
+.DESCRIPTION
+  The Toolbox is written in Rust with Tauri (https://tauri.app). Its page (toolbox\ui\) is drawn by the WebView2
+  runtime that ships with Windows 10/11, so the exe is a few MB; toolbox\src\ does the phone, network and disk work.
+  Needs Rust with the MSVC toolchain (https://rustup.rs).
+
+  Runs cargo build with output in %LOCALAPPDATA%\dodge-toolbox-target, then copies "Dodge Toolbox <version>.exe" to
+  the repo root. Keep the exe there so it finds artifacts\ and scripts\.
+
+  Theme: ui\theme\ is not committed. Every cargo build first runs toolbox\build.rs, which downloads the version
+  pinned in toolbox\theme.json from https://theme.yannislam.org, checks each file's SHA-256 (needs a network
+  connection the first time) and renders the window and exe icon from the theme's favicon.svg. Setting
+  DODGE_SKIP_THEME=1 builds without the theme, for offline compile checks only.
+
+  Without this script: "cargo run" in toolbox\ starts a dev build, and "cargo build --release" writes
+  toolbox\target\release\dodge-toolbox.exe.
+
+.PARAMETER Fast
+  Quicker build (no LTO, fewer optimizations) with a slightly larger exe. For local testing.
+
+.PARAMETER BumpTheme
+  Pin the newest published theme version in toolbox\theme.json before building.
+
+.EXAMPLE
+  pwsh scripts\build-toolbox.ps1 -Fast
 #>
 param(
-    # Quicker build (no LTO, fewer optimizations), slightly larger exe. For local testing.
     [switch]$Fast,
-    # Pin the newest published yl-theme version in toolbox\theme.json before building.
     [switch]$BumpTheme
 )
 $ErrorActionPreference = 'Stop'
