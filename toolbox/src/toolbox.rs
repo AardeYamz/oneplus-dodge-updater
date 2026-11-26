@@ -22,8 +22,6 @@ fn err<E: std::fmt::Display>(e: E) -> String {
     e.to_string()
 }
 
-/// Flashing is refused for anything but this device.
-const DEVICE: &str = "dodge";
 const RECOVERY_SIZE: u64 = 104_857_600;
 const API: &str = "https://download.lineageos.org/api/v1";
 const MIRROR: &str = "https://mirrorbits.lineageos.org/full";
@@ -313,9 +311,9 @@ impl Toolbox {
             Some(self.prop("ro.product.device")).filter(|p| !p.is_empty())
         };
         match product {
-            Some(p) if p == DEVICE => Ok(()),
-            Some(p) => Err(format!("Attached device is '{p}', not '{DEVICE}'. Refusing to flash.")),
-            None => Err(format!("Could not read the device model. Refusing to flash (expected '{DEVICE}').")),
+            Some(p) if parse::is_dodge(&p, fastboot) => Ok(()),
+            Some(p) => Err(format!("Attached device is '{p}', not dodge. Refusing to flash.")),
+            None => Err("Could not read the device model. Refusing to flash (expected dodge).".into()),
         }
     }
 

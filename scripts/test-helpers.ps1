@@ -46,7 +46,7 @@ $env:PATH = "$work$sep$env:PATH"
 
 $failed = 0
 function Test-Case($name, [scriptblock]$body, [string]$throws) {
-  $env:STUB_MODE = 'adb'; $env:STUB_PRODUCT = 'dodge'; $env:STUB_DEVICES = ''; $env:STUB_FAIL = ''; $env:STUB_SIDELOAD_OK = ''
+  $env:STUB_MODE = 'adb'; $env:STUB_PRODUCT = 'OP5D55L1'; $env:STUB_DEVICES = ''; $env:STUB_FAIL = ''; $env:STUB_SIDELOAD_OK = ''
   $err = $null
   try { & $body *>&1 | Out-Null } catch { $err = $_.Exception.Message }
   $ok = if ($throws) { $err -and $err -match $throws } else { -not $err }
@@ -54,15 +54,16 @@ function Test-Case($name, [scriptblock]$body, [string]$throws) {
 }
 
 Test-Case 'guard passes for one dodge over adb' { Assert-Dodge }
-Test-Case 'guard passes for one dodge in fastboot' { $env:STUB_MODE = 'fastboot'; Assert-Dodge }
-Test-Case 'guard refuses another device (adb)' { $env:STUB_PRODUCT = 'pixel'; Assert-Dodge } "not 'dodge'"
-Test-Case 'guard refuses another device (fastboot)' { $env:STUB_MODE = 'fastboot'; $env:STUB_PRODUCT = 'pixel'; Assert-Dodge } "not 'dodge'"
+Test-Case 'guard passes for one dodge in fastboot' { $env:STUB_MODE = 'fastboot'; $env:STUB_PRODUCT = 'sun'; Assert-Dodge }
+Test-Case 'guard refuses the bootloader board name over adb' { $env:STUB_PRODUCT = 'sun'; Assert-Dodge } 'not dodge'
+Test-Case 'guard refuses another device (adb)' { $env:STUB_PRODUCT = 'pixel'; Assert-Dodge } 'not dodge'
+Test-Case 'guard refuses another device (fastboot)' { $env:STUB_MODE = 'fastboot'; $env:STUB_PRODUCT = 'pixel'; Assert-Dodge } 'not dodge'
 Test-Case 'guard refuses two devices' { $env:STUB_DEVICES = '2'; Assert-Dodge } 'exactly one'
 Test-Case 'guard refuses no device' { $env:STUB_MODE = 'none'; Assert-Dodge } 'exactly one'
 Test-Case 'guard refuses an unreadable model' { $env:STUB_PRODUCT = ''; Assert-Dodge } 'Could not read'
 Test-Case 'a failed fastboot flash stops the script' { $env:STUB_FAIL = 'flash'; Invoke-Native fastboot flash recovery x.img } 'failed \(exit 1\)'
 Test-Case 'a successful fastboot flash goes on' { Invoke-Native fastboot flash recovery x.img }
-Test-Case 'Enter-Bootloader stops on a wrong device before rebooting' { $env:STUB_PRODUCT = 'pixel'; Enter-Bootloader } "not 'dodge'"
+Test-Case 'Enter-Bootloader stops on a wrong device before rebooting' { $env:STUB_PRODUCT = 'pixel'; Enter-Bootloader } 'not dodge'
 Test-Case 'sideload with Total xfer counts as done despite exit 1' { $env:STUB_SIDELOAD_OK = '1'; Invoke-Sideload 'rom.zip' }
 Test-Case 'sideload without Total xfer fails' { Invoke-Sideload 'rom.zip' } 'did not finish'
 

@@ -13,7 +13,10 @@ function Invoke-Sideload($file) {
   if ($o -notmatch 'Total xfer') { throw "adb sideload of $file did not finish (no 'Total xfer' line)." }
 }
 # Refuse to flash unless exactly one device is attached and it is the dodge.
-$RequiredDevice = 'dodge'
+# The phone never calls itself just "dodge": ro.product.device is the OnePlus codename (the OTA's pre-device list),
+# and the bootloader's "product" is the SoC board, "sun", which other SM8750 phones share.
+$AdbDevices = 'dodge', 'OP5D55L1', 'OP5D0DL1'
+$FastbootProducts = $AdbDevices + 'sun'
 function Assert-Dodge {
   $ErrorActionPreference = 'Continue'
   $adbList = @(adb devices 2>&1 | Where-Object { $_ -match '^\S+\s+(device|recovery|sideload|unauthorized|offline|bootloader)\s*$' })
@@ -21,13 +24,16 @@ function Assert-Dodge {
   $n = $adbList.Count + $fbList.Count
   if ($n -ne 1) { throw "Expected exactly one attached device, found $n. Unplug the others and retry." }
   if ($fbList.Count) {
-    $line = (fastboot getvar product 2>&1 | Out-String) -split "`r?`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ -like 'product:*' } | Select-Object -First 1
+    # "$_" keeps the bare text: Windows PowerShell 5.1 wraps stderr lines in error records that format with extra noise.
+    $line = fastboot getvar product 2>&1 | ForEach-Object { "$_".Trim() } | Where-Object { $_ -like 'product:*' } | Select-Object -First 1
     $product = "$line" -replace '^product:\s*', ''
+    $allowed = $FastbootProducts
   } else {
     $product = "$(adb shell getprop ro.product.device)".Trim()
+    $allowed = $AdbDevices
   }
-  if (-not $product) { throw "Could not read the device model. Refusing to flash (expected '$RequiredDevice')." }
-  if ($product -ne $RequiredDevice) { throw "Attached device is '$product', not '$RequiredDevice'. Refusing to flash." }
+  if (-not $product) { throw "Could not read the device model. Refusing to flash (expected dodge)." }
+  if ($product -cnotin $allowed) { throw "Attached device is '$product', not dodge. Refusing to flash." }
 }
 function Enter-Bootloader {
   Assert-Dodge
