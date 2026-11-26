@@ -5,7 +5,7 @@ description: Update the OnePlus 13 (CPH2655, codename dodge) to the latest Linea
 
 # Update LineageOS on dodge
 
-Source of truth: the manual flash instructions in `docs/reference.md`. The scripted version is `scripts/update-lineage.ps1`.
+Source of truth: "Manual flash" in `README.md`. The scripted version is `scripts/update-lineage.ps1`.
 
 ## Before flashing
 

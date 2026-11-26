@@ -2,7 +2,7 @@
 const $ = (id) => document.getElementById(id);
 const tb = window.toolbox;
 
-// Mirrors scripts/update-lineage.ps1 / the manual flash instructions in docs/reference.md. `tap` is shown before running; `confirm` asks first; `pause` stops the autorun for a prompt before the step.
+// Mirrors scripts/update-lineage.ps1 / the "Manual flash" steps in README.md. `tap` is shown before running; `confirm` asks first; `pause` stops the autorun for a prompt before the step.
 const STEPS = [
   { id: 'pickBuild', title: 'Pick the build', desc: 'Asks the LineageOS API for the newest nightly (or the date you type).', input: 'Build date yyyyMMdd (blank = newest)' },
   { id: 'download', title: 'Download and verify', desc: 'ROM zip (SHA-256 checked), recovery.img, init_boot.img and build-manifest.xml. Skips files you already have.' },
