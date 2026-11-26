@@ -24,7 +24,8 @@ function Assert-Dodge {
   $n = $adbList.Count + $fbList.Count
   if ($n -ne 1) { throw "Expected exactly one attached device, found $n. Unplug the others and retry." }
   if ($fbList.Count) {
-    $line = (fastboot getvar product 2>&1 | Out-String) -split "`r?`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ -like 'product:*' } | Select-Object -First 1
+    # "$_" keeps the bare text: Windows PowerShell 5.1 wraps stderr lines in error records that format with extra noise.
+    $line = fastboot getvar product 2>&1 | ForEach-Object { "$_".Trim() } | Where-Object { $_ -like 'product:*' } | Select-Object -First 1
     $product = "$line" -replace '^product:\s*', ''
     $allowed = $FastbootProducts
   } else {
