@@ -27,7 +27,7 @@ flowchart LR
     ci["GitHub Actions<br/>ci.yml, build.yml"] --> repo
 ```
 
-- **Flow:** pick the newest build, confirm, download and verify, sideload LineageOS, switch slot, sideload MindTheGapps, boot once, flash OrangeFox, then patch and flash `init_boot` (replaced by every update).
+- **Flow:** pick the newest build, confirm, download and verify, sideload LineageOS, switch slot, sideload MindTheGapps, boot once, flash OrangeFox, then patch and flash `init_boot` (replaced by every update). Details in [docs/update-flow.md](docs/update-flow.md).
 - **Safety:** flashing is refused unless exactly one device is attached and it is the dodge. A same-major update keeps data; back up before a major jump and check the [upgrade guide](https://wiki.lineageos.org/devices/dodge/upgrade/) for wipes.
 - **Data root:** downloads and `platform-tools\` live in the repo root (gitignored), or wherever `DODGE_DATA_ROOT` in `.env` points (see `.env.example`).
 - **Theme:** `build.rs` downloads the theme version (from theme.yannislam.org) pinned in `toolbox/theme.json` and checks each SHA-256. `DODGE_SKIP_THEME=1` skips it for offline compile checks.
@@ -38,7 +38,7 @@ flowchart LR
 scripts/            update-lineage.ps1, build-toolbox.ps1, shared helpers and their tests
 toolbox/            Tauri app: Rust in src/, page in ui/
 .claude/skills/     Claude skill for running an update
-docs/               audit findings
+docs/               update flow, audit findings
 .github/            CI, build and Dependabot config
 ```
 
@@ -61,22 +61,12 @@ cargo test --manifest-path toolbox/Cargo.toml           # unit tests
 pwsh scripts\test-helpers.ps1                           # script helper tests
 ```
 
-### Manual flash
-
-All files must be from the same build, under `artifacts\`. MindTheGapps must match its Android version.
-
-0. Extract OrangeFox's `recovery.img` to `artifacts\fox-extract\`; it must be 104857600 bytes.
-1. `adb reboot bootloader`, `fastboot flash recovery <build>\recovery.img` (LineageOS Recovery), `fastboot reboot recovery`.
-2. Phone: **Apply from ADB**, then `adb sideload <lineage zip>` (stopping near 47% is normal). Wipe only when coming from OxygenOS.
-3. Phone: **Advanced > Reboot to recovery** to switch slot (do not boot the system yet), **Apply from ADB**, `adb sideload <gapps zip>`, answer **Yes** to the signature warning.
-4. Reboot to system once and check it works.
-5. `adb reboot bootloader`, `fastboot flash recovery artifacts\fox-extract\recovery.img`. Use `flash`: `fastboot boot` fails on this phone.
-6. `adb push <build>\init_boot.img /sdcard/Download/`, patch it in KernelSU-Next choosing KMI **android15-6.6** by hand (the auto pick is wrong), `adb pull` it, `fastboot flash init_boot <patched>`. The manager should say **Working**. Undo: flash the stock `init_boot.img`.
-
 Never run `fastboot -w`, `fastboot erase userdata` or "Format data" unless you mean to wipe the phone.
 
 ## Docs
 
+- [docs/update-flow.md](docs/update-flow.md): the update step by step, using the Toolbox, flashing by hand and known issues.
+- Script parameters and behaviour: `Get-Help .\scripts\update-lineage.ps1 -Full` (same for `build-toolbox.ps1`).
 - [LineageOS dodge wiki](https://wiki.lineageos.org/devices/dodge/): [install](https://wiki.lineageos.org/devices/dodge/install/), [upgrade](https://wiki.lineageos.org/devices/dodge/upgrade/), [nightlies](https://download.lineageos.org/devices/dodge/builds).
 - [docs/audit-findings-2026-11-09.md](docs/audit-findings-2026-11-09.md): audit work list.
 

@@ -1,16 +1,52 @@
 <#
 .SYNOPSIS
-  Update the OnePlus 13 (dodge) to the latest LineageOS nightly, then restore
-  MindTheGapps, OrangeFox and KernelSU-Next. Follows the "Manual flash" steps in README.md.
+  Update the OnePlus 13 (dodge) to the latest LineageOS nightly, then restore MindTheGapps, OrangeFox and
+  KernelSU-Next.
 
 .DESCRIPTION
-  Run in PowerShell from anywhere; downloads live in artifacts\ under -DataRoot (default: DODGE_DATA_ROOT from .env, else the repo root). Needs adb/fastboot (platform-tools) on PATH,
-  USB debugging authorized, bootloader unlocked.
-  Steps that need a tap on the phone pause and wait. Each destructive step asks first.
+  Run in PowerShell from anywhere. Needs adb and fastboot (current Android SDK Platform-Tools) on PATH, USB
+  debugging authorized and the bootloader unlocked. Old adb versions (such as 1.0.39) can fail on the 3 GB zip.
+  The overall flow and the manual steps are in docs\update-flow.md.
+
+  What it does:
+  - Checks that exactly one device is attached and that it is the dodge, here and before every flash.
+  - Stops if the phone is already on the target build. Warns on a major version change.
+  - Asks once, before downloading or flashing. Later flashes do not ask again.
+  - Pauses for each step that needs a tap on the phone, until you press Enter.
+  - Skips downloads whose file already exists. Checks the ROM zip against the API's SHA-256, and requires
+    recovery.img (LineageOS and OrangeFox) to be exactly 104857600 bytes.
+  - Flashes a patched init_boot only if it was written after this run pushed the stock one and its vermagic= is
+    6.6.x. Saves it as artifacts\images\ksu-patched-init_boot-<date>.img.
+  - Stops at the first failed adb or fastboot command.
+
   A same-major update keeps data. Back up before a major jump (e.g. 24 -> 25).
+  To undo root: fastboot flash init_boot artifacts\builds\<major>-<date>\init_boot.img
 
 .PARAMETER Build
-  Build date to install (yyyyMMdd). Default: newest nightly from the LineageOS API.
+  Build date to install (yyyyMMdd), matched against the LineageOS API response. Default: the newest nightly.
+
+.PARAMETER DataRoot
+  Folder that holds artifacts\. Default: DODGE_DATA_ROOT from the environment, then from .env at the repo root,
+  then the repo root. The script stops if the folder does not exist.
+
+.PARAMETER Device
+  LineageOS device codename used in the API and download URLs.
+
+.PARAMETER Gapps
+  MindTheGapps zip to sideload. Default: the pinned zip in <DataRoot>\artifacts\mindthegapps\.
+
+.PARAMETER FoxZip
+  OrangeFox zip; its recovery.img is extracted to artifacts\fox-extract. Default: the pinned zip in
+  <DataRoot>\artifacts\orangefox\.
+
+.PARAMETER KsuPackage
+  KernelSU-Next manager package name shown in the on-phone prompt.
+
+.EXAMPLE
+  powershell -File scripts\update-lineage.ps1
+
+.EXAMPLE
+  powershell -File scripts\update-lineage.ps1 -Build 20261117
 #>
 [CmdletBinding()]
 param(
