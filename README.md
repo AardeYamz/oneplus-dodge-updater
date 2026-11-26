@@ -50,7 +50,7 @@ docs/               update flow, audit findings
 
 ## Commands
 
-Needs Windows, PowerShell, current [Platform-Tools](https://developer.android.com/tools/releases/platform-tools) on `PATH` (adb 1.0.39 can fail on the ROM sideload), USB debugging and an unlocked bootloader. The Toolbox also needs [Rust](https://rustup.rs) (MSVC).
+Needs Windows, PowerShell, current [Platform-Tools](https://developer.android.com/tools/releases/platform-tools) on `PATH`, USB debugging and an unlocked bootloader. The Toolbox also needs [Rust](https://rustup.rs) (MSVC).
 
 ```powershell
 Copy-Item .env.example .env                             # optional: set DODGE_DATA_ROOT
