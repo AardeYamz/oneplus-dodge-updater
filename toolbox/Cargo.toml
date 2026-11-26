@@ -4,6 +4,7 @@ version = "0.2.0"
 edition = "2021"
 description = "Windows toolbox for updating LineageOS on the OnePlus 13 (dodge)"
 publish = false
+license = "MIT"
 
 [dependencies]
 # The system WebView (WebView2 on Windows) renders ui/; the Rust side does what main.js used to.

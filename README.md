@@ -79,3 +79,7 @@ Never run `fastboot -w`, `fastboot erase userdata` or "Format data" unless you m
 
 - [LineageOS dodge wiki](https://wiki.lineageos.org/devices/dodge/): [install](https://wiki.lineageos.org/devices/dodge/install/), [upgrade](https://wiki.lineageos.org/devices/dodge/upgrade/), [nightlies](https://download.lineageos.org/devices/dodge/builds).
 - [docs/audit-findings-2026-11-09.md](docs/audit-findings-2026-11-09.md): audit work list.
+
+## License
+
+[MIT](LICENSE)
