@@ -22,7 +22,7 @@ jobs:
       pull-requests: read     # lists a PR's changed files
       security-events: write  # zizmor and CodeQL upload SARIF to code scanning
       actions: read
-    uses: AardeYamz/workflows/.github/workflows/ci.yml@d60c664a9ef3b4c2ed04ae33755173fbd587ba0c # v1.4.1
+    uses: AardeYamz/workflows/.github/workflows/ci.yml@5192f1b96f25416cca002ae61152dad36fe1f249 # v1.4.2
     with:
       codeql: true
       codeql-languages: actions,javascript-typescript,rust
